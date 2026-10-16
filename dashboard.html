@@ -4,208 +4,205 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#135685">
-<title>GSC Study · админ-кабинет</title>
+<title>GSC Study · единый дашборд</title>
 <link rel="icon" href="assets/brand-logo.png">
 <link rel="stylesheet" href="app/style.css">
 <link rel="stylesheet" href="app/brand.css">
-<link rel="stylesheet" href="app/admin.css">
+<link rel="stylesheet" href="app/eco.css">
 </head>
-<body>
-<div class="g-wrap" id="root"></div>
+<body class="eco">
+<main class="e-page" id="root"></main>
 
+<script src="config.js"></script>
 <script src="app/course.js"></script>
+<script src="app/control.js"></script>
 <script src="app/data.js"></script>
 <script src="app/schedule.js"></script>
+<script src="app/eco.js"></script>
 <script>
 (function () {
   'use strict';
-  var G = window.GSC;
-  var SCHED = window.SCHED;
+  var C = CTRL, D = DEMO;
+  E.shell('dashboard');
 
-  var root = document.getElementById('root');
-  var S = { view: 'overview', teacher: 't1', log: G.seedLog.slice() };
+  var S = { view: /view=(teachers|sched)/.exec(location.search) ? RegExp.$1 : 'students', teacher: 't1' };
 
-  function each(sel, fn) { Array.prototype.forEach.call(root.querySelectorAll(sel), fn); }
-  function say(text) {
-    var el = document.getElementById('gToast');
-    if (!el) return;
-    el.textContent = text; el.style.display = 'block';
-    clearTimeout(say._t);
-    say._t = setTimeout(function () { el.style.display = 'none'; }, 3000);
-  }
-  function log(text) {
-    S.log.unshift({ at: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }), text: text });
-    if (S.view === 'overview') render();
-  }
-
-  function render() {
-    root.innerHTML =
-      '<div class="g-top">' +
-        '<img class="g-logo" src="assets/brand-logo.png" alt="">' +
-        '<h1>Админ-кабинет</h1>' +
-        '<div class="g-tabs">' +
-          '<button data-view="overview"' + (S.view === 'overview' ? ' class="on"' : '') + '>Обзор</button>' +
-          '<button data-view="students"' + (S.view === 'students' ? ' class="on"' : '') + '>Ученики</button>' +
-          '<button data-view="teachers"' + (S.view === 'teachers' ? ' class="on"' : '') + '>Учителя</button>' +
-          '<button data-view="sched"'    + (S.view === 'sched'    ? ' class="on"' : '') + '>Графики</button>' +
-        '</div>' +
-        '<a class="g-mini" href="demo.html" style="text-decoration:none">К демо</a>' +
-      '</div>' +
-      '<div id="gToast" class="g-toast"></div>' +
-      '<div class="g-note">Единый дашборд: что делает каждый учитель по каждому ученику — ' +
-        'уровень, дата старта, ставка и период оплаты свои у каждого, на общем списке они терялись. ' +
-        'Начисление идёт по отметкам учителя, выплата — по подтверждениям клиента.</div>' +
-
-      (S.view === 'overview' ? viewOverview()
-       : S.view === 'students' ? viewStudents()
-       : S.view === 'teachers' ? viewTeachers()
-       : viewSched());
-
-    each('[data-view]', function (b) {
-      b.onclick = function () { S.view = b.getAttribute('data-view'); render(); };
-    });
-    if (S.view === 'sched') {
-      var pick = root.querySelector('#pick');
-      if (pick) pick.onchange = function () { S.teacher = pick.value; render(); };
+  /* Самое тревожное по ученику: открытое расхождение важнее оплаты. */
+  var SHORT = { dispute: 'спор', suspect: 'подозрительно', ghost: 'нет отметки', unsure: 'клиент не уверен',
+                lowq: 'низкая оценка', silent: 'клиент молчит' };
+  function worst(an, card) {
+    var t = an.tickets.filter(function (x) { return x.card.id === card.id; });
+    if (t.length) {
+      var tone = t.some(function (x) { return x.kind === 'dispute' || x.kind === 'suspect'; }) ? 'bad' : 'warn';
+      return '<span class="e-chip ' + tone + '">' + (t.length > 1 ? E.plural(t.length, 'вопрос', 'вопроса', 'вопросов')
+        : SHORT[t[0].kind]) + '</span>';
     }
-    var clear = root.querySelector('[data-clear]');
-    if (clear) clear.onclick = function () {
-      S.log = [];
-      log('Журнал очищен администратором');
-      say('Журнал очищен');
+    return '<span class="e-chip ok">в порядке</span>';
+  }
+  function course(card) {
+    var lv = D.levelOf(card), next = D.nextLesson(D.load(), card.id);
+    var n = next && next.course_id ? +next.course_id.slice(1) : 14;
+    return '<div><span class="e-tag">' + E.esc(lv ? lv.code + ' ' + lv.title : card.level) + '</span>' +
+      '<div class="e-prog" style="margin-top:6px"><div class="e-bar"><i class="wait" style="width:' +
+      Math.round((n - 1) / 14 * 100) + '%;opacity:1"></i></div><span>урок ' + n + ' из 14</span></div></div>';
+  }
+  function pay(card) {
+    var p = D.payState(card);
+    return '<div style="text-align:inherit"><span class="e-chip ' + p.tone + '">' + E.esc(p.text) + '</span>' +
+      '<small class="e-small" style="display:block;margin-top:4px">' + E.esc(D.PAY_PLAN[card.pay_plan] || '') + '</small></div>';
+  }
+
+  function students(an) {
+    var st = D.load();
+    return '<section class="e-card flush"><div class="e-card-h"><h2>Все ученики всех учителей</h2>' +
+        '<span class="sub">Индивидуальные занятия у всех разные: уровень, урок курса, старт, график, оплата. ' +
+        'Здесь они в одну строку. Нажмите на ученика — журнал и оплата.</span></div>' +
+      '<div class="e-scroll"><table class="e-table"><thead><tr><th>Ученик</th><th>Учитель</th><th>Курс</th><th>Старт · график</th>' +
+        '<th>Оплата</th><th>Уроки с 1 октября</th><th>Состояние</th></tr></thead><tbody>' +
+      st.cards.map(function (card) {
+        var t = D.teacherOf(st, card), rows = C.forCard(an, card.id).filter(function (r) { return r.date && r.date <= D.TODAY; });
+        var mm = C.money(rows);
+        return '<tr class="click" data-card="' + card.id + '" tabindex="0">' +
+          '<td class="lead">' + E.who(card.name, card.goal) + '</td>' +
+          '<td data-l="Учитель">' + E.esc(t.name) + '</td>' +
+          '<td data-l="Курс">' + course(card) + '</td>' +
+          '<td data-l="Старт · график"><span class="tnum">' + C.dateLabel(card.started_on, 'ru') + '</span>' +
+            '<small class="e-small" style="display:block">' + E.dayNames(card.days) + ', ' + card.time_at + '</small></td>' +
+          '<td data-l="Оплата">' + pay(card) + '</td>' +
+          '<td data-l="Уроки" style="min-width:150px"><div class="tnum" style="font-size:13px;margin-bottom:5px">' +
+            '<b>' + mm.n.payable + '</b> подтв. из ' + mm.n.claimed + '</div>' + E.bar(mm) + '</td>' +
+          '<td data-l="Состояние">' + worst(an, card) + '</td></tr>';
+      }).join('') + '</tbody></table></div></section>';
+  }
+
+  function teachers(an) {
+    var st = D.load();
+    return '<div class="e-grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">' + st.teachers.map(function (t) {
+      var mine = st.cards.filter(function (c) { return c.teacher_id === t.id; });
+      var m1 = C.money(C.forPeriod(an, D.P1).filter(function (r) { return r.card.teacher_id === t.id; }));
+      var m2 = C.money(C.forPeriod(an, D.P2).filter(function (r) { return r.card.teacher_id === t.id; }));
+      var open = an.tickets.filter(function (x) { return x.card.teacher_id === t.id; }).length;
+      return '<section class="e-card"><div class="e-card-h">' + E.who(t.name, E.phoneFmt(t.phone), 't lg') + '</div>' +
+        '<p class="e-small" style="margin:0 0 14px">' + E.esc(t.bio) + '</p>' +
+        '<div class="e-tags" style="margin-bottom:14px">' + mine.map(function (c) {
+          return '<span class="e-tag">' + E.esc(c.name) + '</span>';
+        }).join('') + '</div>' +
+        '<dl class="e-dl">' +
+          '<div><dt>1–15 окт · к выплате</dt><dd><b>' + E.money(m1.payable) + '</b></dd></div>' +
+          '<div><dt>1–15 окт · на проверке</dt><dd>' + (m1.review ? E.money(m1.review) : '—') + '</dd></div>' +
+          '<div><dt>16–31 окт · ждёт клиента</dt><dd>' + (m2.awaiting ? E.money(m2.awaiting) : '—') + '</dd></div>' +
+        '</dl>' +
+        '<div class="e-acts" style="margin-top:14px"><a class="e-btn sm sec" href="teacher.html?t=' + t.id + '">Кабинет учителя</a>' +
+          (open ? '<a class="e-btn sm danger" href="proverka.html">' + E.plural(open, 'вопрос', 'вопроса', 'вопросов') + ' в контроле</a>' : '') +
+        '</div></section>';
+    }).join('') + '</div>';
+  }
+
+  function sched() {
+    var st = D.load(), t = D.byId(st.teachers, S.teacher);
+    var cards = st.cards.filter(function (c) { return c.teacher_id === t.id; })
+      .map(function (c) { return { name: c.name, days: c.days, time_at: c.time_at, format: 'individual', archived: false }; });
+    return '<section class="e-card"><div class="e-card-h"><h2>Неделя учителя</h2>' +
+        '<div class="e-seg">' + st.teachers.map(function (x) {
+          return '<button data-t="' + x.id + '"' + (x.id === t.id ? ' class="on"' : '') + '>' + E.esc(x.name.split(' ')[0]) + '</button>';
+        }).join('') + '</div>' +
+        '<span class="sub">Синее — занято, зелёное — свободное окно. Новый ученик записывается туда, где зелёное.</span></div>' +
+      SCHED.grid(t, cards, false) + '</section>';
+  }
+
+  function attention(an) {
+    var st = D.load(), items = [];
+    var m1 = C.money(C.forPeriod(an, D.P1));
+    if (an.tickets.length) {
+      items.push('<div class="e-li"><span><b>' + E.plural(an.tickets.length, 'расхождение', 'расхождения', 'расхождений') +
+        ' в уроках</b><small class="e-small" style="display:block">' + E.money(m1.review) +
+        ' не выплачиваются, пока администратор не решит</small></span>' +
+        '<a class="e-btn sm" href="proverka.html">Разобрать</a></div>');
+    }
+    st.cards.forEach(function (c) {
+      var p = D.payState(c);
+      if (p.left == null || p.left > 3) return;
+      items.push('<div class="e-li"><span><b>' + E.esc(c.name) + ' · ' + E.esc(p.text) + '</b>' +
+        '<small class="e-small" style="display:block">' + E.esc(D.PAY_PLAN[c.pay_plan]) + ', оплачено до ' +
+        C.dateLabel(c.paid_until, 'ru') + '</small></span>' +
+        '<button class="e-btn sm sec" data-paid="' + c.id + '">Оплата получена</button></div>');
+    });
+    if (!items.length) return '';
+    return '<section class="e-card flush" style="margin-bottom:16px"><div class="e-card-h"><h2>Требует внимания сегодня</h2></div>' +
+      '<div class="e-list">' + items.join('') + '</div></section>';
+  }
+
+  function draw() {
+    var an = D.analyze(), st = D.load();
+    var m1 = C.money(C.forPeriod(an, D.P1)), mAll = C.money(an.rows.filter(function (r) { return r.date && r.date <= D.TODAY; }));
+    var late = st.cards.filter(function (c) { var p = D.payState(c); return p.left != null && p.left < 0; }).length;
+    return '<div class="e-head"><div><span class="e-eyebrow">Владелец школы</span><h1>Единый дашборд</h1>' +
+        '<p>Что делает каждый учитель с каждым учеником: на каком уроке курса, сколько уроков проведено и ' +
+        'подтверждено клиентом, кто когда платит. Цифры считаются из журнала — их никто не вбивает руками.</p></div>' +
+        '<div class="e-seg">' + [['students', 'Ученики'], ['teachers', 'Учителя'], ['sched', 'Графики']].map(function (x) {
+          return '<button data-v="' + x[0] + '"' + (S.view === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>';
+        }).join('') + '</div></div>' +
+      '<div class="e-kpis">' +
+        '<div class="e-kpi"><span>Ученики</span><b>' + st.cards.length + '</b><small>у ' + E.plural(st.teachers.length, 'учителя', 'учителей', 'учителей') + ', 4 уровня</small></div>' +
+        '<div class="e-kpi"><span>Уроков с 1 октября</span><b>' + mAll.n.claimed + '</b><small>' + mAll.n.payable + ' подтверждены клиентами</small></div>' +
+        '<a class="e-kpi ok" href="proverka.html"><span>К выплате · 1–15 окт</span><b>' + E.money(m1.payable) + '</b><small>ведомость готова</small></a>' +
+        '<a class="e-kpi ' + (m1.review ? 'bad' : '') + '" href="proverka.html"><span>На проверке</span><b>' + E.money(m1.review) + '</b><small>' +
+          E.plural(an.tickets.length, 'вопрос', 'вопроса', 'вопросов') + '</small></a>' +
+        '<div class="e-kpi ' + (late ? 'warn' : '') + '"><span>Оплаты клиентов</span><b>' + (late ? late + ' из ' + st.cards.length : 'в срок') + '</b>' +
+          '<small>' + (late ? 'просрочили оплату' : 'у каждого свой период') + '</small></div>' +
+      '</div>' +
+      attention(an) +
+      (S.view === 'students' ? students(an) : S.view === 'teachers' ? teachers(an) : sched());
+  }
+
+  function cardDialog(id) {
+    var st = D.load(), card = D.byId(st.cards, id), t = D.teacherOf(st, card), an = D.analyze();
+    var rows = C.forCard(an, id).filter(function (r) { return r.date; })
+      .sort(function (a, b) { return a.date.localeCompare(b.date); });
+    var past = rows.filter(function (r) { return r.date <= D.TODAY; });
+    var next = rows.filter(function (r) { return r.date > D.TODAY; }).slice(0, 2);
+    var p = D.payState(card);
+    E.open('<div class="e-card-h" style="margin-bottom:6px">' + E.who(card.name, E.phoneFmt(card.phone), 'lg') +
+        '<span class="sp"></span>' + worst(an, card) + '</div>' +
+      '<p class="e-small">' + E.esc(card.goal) + ' · ' + E.esc(card.note) + '</p>' +
+      '<div class="e-tags" style="margin:10px 0 4px"><span class="e-tag">учитель ' + E.esc(t.name) + '</span>' +
+        '<span class="e-tag">' + E.esc((D.levelOf(card) || {}).title || card.level) + '</span>' +
+        '<span class="e-tag">' + E.dayNames(card.days) + ', ' + card.time_at + '</span>' +
+        '<span class="e-tag">с ' + C.dateLabel(card.started_on, 'ru') + '</span>' +
+        '<span class="e-tag">' + E.money(card.rate) + ' за урок</span></div>' +
+      '<div class="e-label">Оплата</div>' +
+      '<div class="e-acts"><span class="e-chip ' + p.tone + '">' + E.esc(D.PAY_PLAN[card.pay_plan]) + ' · ' + E.esc(p.text) + '</span>' +
+        '<button class="e-btn sm sec" id="dPaid">Оплата получена</button></div>' +
+      '<div class="e-label">Журнал</div>' +
+      past.map(function (r) {
+        return '<div class="e-les" style="grid-template-columns:62px minmax(0,1fr) auto"><span class="d"><b>' +
+          E.short(r.date) + '</b>' + E.dayShort(r.date) + '</span><span class="tp">' + E.esc(r.l.topic) +
+          (r.l.client_note ? '<small>«' + E.esc(r.l.client_note) + '»</small>' : '') + '</span>' + E.chip(r.status) + '</div>';
+      }).join('') +
+      (next.length ? '<div class="e-label">Дальше по курсу</div>' + next.map(function (r) {
+        return '<div class="e-les future" style="grid-template-columns:62px minmax(0,1fr)"><span class="d"><b>' +
+          E.short(r.date) + '</b>' + E.dayShort(r.date) + '</span><span class="tp">' + E.esc(r.l.topic) +
+          '<small>' + E.esc(r.l.homework) + '</small></span></div>';
+      }).join('') : '') +
+      '<div class="foot"><a class="e-btn sec" href="teacher.html?t=' + t.id + '">Кабинет учителя</a>' +
+        '<button class="e-btn" data-close>Закрыть</button></div>');
+    document.getElementById('dPaid').onclick = function () {
+      D.act.paid(id); E.close(); E.toast('Оплата записана: ' + card.name);
     };
   }
 
-  /* ── обзор ────────────────────────────────────────────────────────── */
-  function viewOverview() {
-    var all = G.totals();
-    var tk = G.tickets();
-
-    return '<div class="g-kpis">' +
-        '<div class="g-kpi"><b>' + G.students.length + '</b><span>учеников, 4 уровня</span></div>' +
-        '<div class="g-kpi"><b>' + G.teachers.length + '</b><span>учителя</span></div>' +
-        '<div class="g-kpi"><b>' + G.money(all.accrued) + '</b><span>начислено в октябре</span></div>' +
-        '<div class="g-kpi green"><b>' + G.money(all.confirmed) + '</b><span>подтверждено к выплате</span></div>' +
-        '<div class="g-kpi hot"><b>' + G.money(all.hold) + '</b><span>на проверке</span></div>' +
-        '<div class="g-kpi hot"><b>' + tk.length + '</b><span>расхождений в очереди</span></div>' +
-      '</div>' +
-
-      '<div class="g-card"><h3>Расхождения, ждущие разбора</h3>' +
-        '<div class="hint">Живут в контроле уроков — отсюда видно, что система уже сама их собрала. ' +
-          'Пока администратор не разобрался, эти деньги не выплачиваются.</div>' +
-        '<div class="g-acts">' +
-          '<a class="g-btn" href="proverka.html?view=admin" style="text-decoration:none">Открыть очередь (' + tk.length + ')</a>' +
-          '<a class="g-btn quiet" href="notifications.html" style="text-decoration:none">Система оповещений</a>' +
-        '</div>' +
-      '</div>' +
-
-      '<div class="g-card"><h3>Журнал событий</h3>' +
-        '<div class="g-log">' + S.log.slice(0, 8).map(function (r) {
-          return '<div><b>' + r.at + '</b> · ' + G.esc(r.text) + '</div>';
-        }).join('') + '</div>' +
-        '<div class="g-acts"><button class="g-mini" data-clear="1">Очистить журнал</button></div>' +
-      '</div>' +
-
-      '<div class="g-card"><h3>Демо-экосистема</h3>' +
-        '<div class="g-hub" style="margin-top:0">' +
-          '<a href="index.html"><b>Платформа ученика</b><span>4 уровня, 56 уроков, словарь, игры.</span><span class="go">Открыть →</span></a>' +
-          '<a href="teacher.html"><b>Кабинет учителя</b><span>Журнал, отметки, зарплата.</span><span class="go">Открыть →</span></a>' +
-          '<a href="proverka.html"><b>Контроль уроков</b><span>Подтверждение клиентом, очередь.</span><span class="go">Открыть →</span></a>' +
-          '<a href="notifications.html"><b>Система оповещений</b><span>Запросы, напоминания, расхождения.</span><span class="go">Открыть →</span></a>' +
-        '</div></div>';
-  }
-
-  /* ── ученики: единая таблица ─────────────────────────────────────── */
-  function viewStudents() {
-    var rows = G.students.map(function (s) {
-      var st = G.stat(s);
-      var t = G.byTeacher(s.teacher);
-      return '<tr>' +
-        '<td><b>' + G.esc(s.name) + '</b><br><span style="color:var(--muted);font-size:12px">' + G.esc(G.phoneFmt(s.phone)) + '</span></td>' +
-        '<td>' + G.esc(t.name) + '</td>' +
-        '<td>' + G.esc(G.courseBadge(s)) + '</td>' +
-        '<td>' + G.dateRu(s.started) + '</td>' +
-        '<td>' + G.esc(G.dayNames(s.days)) + ', ' + G.esc(s.time) + '</td>' +
-        '<td>' + G.esc(s.pay) + ' · ' + G.money(s.rate) + '</td>' +
-        '<td class="num">' + st.lessons + '</td>' +
-        '<td class="num">' + st.okCount + '</td>' +
-        '<td class="num">' + (st.disputes || '—') + '</td>' +
-        '<td class="num">' + G.money(st.confirmed) + '</td>' +
-        '<td class="num">' + (st.hold ? G.money(st.hold) : '—') + '</td></tr>';
-    }).join('');
-    var all = G.totals();
-
-    return '<div class="g-card"><h3>Все ученики</h3>' +
-      '<div class="hint">Одна строка — один ученик. «К выплате» — подтверждено клиентом, ' +
-        '«на проверке» — спор, молчание или открытый период.</div>' +
-      '<div class="scrollx"><table><thead><tr>' +
-        '<th>Ученик</th><th>Учитель</th><th>Уровень</th><th>Старт</th><th>График</th>' +
-        '<th>Оплата</th><th class="num">В журнале</th><th class="num">Подтв.</th><th class="num">Спор</th>' +
-        '<th class="num">К выплате</th><th class="num">На проверке</th>' +
-      '</tr></thead><tbody>' + rows + '</tbody>' +
-      '<tfoot><tr><td colspan="7">Итого, ' + G.students.length + ' учеников</td>' +
-        '<td class="num">' + all.lessons + '</td><td colspan="2"></td>' +
-        '<td class="num">' + G.money(all.confirmed) + '</td>' +
-        '<td class="num">' + G.money(all.hold) + '</td></tr></tfoot></table></div></div>';
-  }
-
-  /* ── учителя ─────────────────────────────────────────────────────── */
-  function viewTeachers() {
-    var rows = G.teachers.map(function (t) {
-      var live = G.students.filter(function (s) { return s.teacher === t.id; });
-      var acc = 0, conf = 0, hold = 0, les = 0;
-      live.forEach(function (s) {
-        var st = G.stat(s);
-        acc += st.accrued; conf += st.confirmed; hold += st.hold; les += st.lessons;
-      });
-      return '<tr>' +
-        '<td><b>' + G.esc(t.name) + '</b><br><span style="color:var(--muted);font-size:12px">' + G.esc(G.phoneFmt(t.phone)) + '</span></td>' +
-        '<td class="num">' + G.money(t.rate) + '</td>' +
-        '<td class="num">' + live.length + '</td>' +
-        '<td class="num">' + les + '</td>' +
-        '<td class="num">' + G.money(conf) + '</td>' +
-        '<td class="num">' + (hold ? G.money(hold) : '—') + '</td></tr>';
-    }).join('');
-    var all = G.totals();
-
-    return '<div class="g-card"><h3>Учителя</h3>' +
-      '<div class="hint">К выплате — уроки, подтверждённые клиентами. На проверке — спорные, ' +
-        'без ответа и открытый период.</div>' +
-      '<div class="scrollx"><table><thead><tr>' +
-        '<th>Учитель</th><th class="num">Ставка</th><th class="num">Учеников</th>' +
-        '<th class="num">В журнале</th><th class="num">К выплате</th><th class="num">На проверке</th>' +
-      '</tr></thead><tbody>' + rows + '</tbody>' +
-      '<tfoot><tr><td>Итого</td><td></td><td class="num">' + G.students.length + '</td>' +
-        '<td class="num">' + all.lessons + '</td>' +
-        '<td class="num">' + G.money(all.confirmed) + '</td>' +
-        '<td class="num">' + G.money(all.hold) + '</td></tr></tfoot></table></div></div>' +
-
-      '<div class="g-card"><h3>Кабинет учителя</h3>' +
-      '<div class="g-acts" style="margin-top:0"><a class="g-btn" href="teacher.html" style="text-decoration:none">Открыть →</a></div></div>';
-  }
-
-  /* ── графики ─────────────────────────────────────────────────────── */
-  function viewSched() {
-    var t = G.byTeacher(S.teacher);
-    var cards = G.students
-      .filter(function (s) { return s.teacher === S.teacher; })
-      .map(function (s) {
-        return { name: s.name, days: s.days, time_at: s.time, format: 'individual', archived: false };
-      });
-
-    return '<div class="g-card"><h3>Неделя</h3>' +
-      '<div class="hint">Синее — занято, зелёное — свободно. Запись учеников ведёт администратор.</div>' +
-      '<select class="g-field" id="pick" style="width:auto;min-width:230px;margin-bottom:14px">' +
-        G.teachers.map(function (x) {
-          return '<option value="' + x.id + '"' + (x.id === S.teacher ? ' selected' : '') + '>' +
-                 G.esc(x.name) + '</option>';
-        }).join('') +
-      '</select>' +
-      SCHED.grid(t, cards, false) +
-    '</div>';
-  }
-
-  render();
+  draw.wire = function (root) {
+    E.on(root, '[data-v]', function (b) { S.view = b.getAttribute('data-v'); go(); });
+    E.on(root, '[data-t]', function (b) { S.teacher = b.getAttribute('data-t'); go(); });
+    E.on(root, '[data-card]', function (b) { cardDialog(b.getAttribute('data-card')); });
+    E.on(root, '[data-paid]', function (b) {
+      D.act.paid(b.getAttribute('data-paid')); E.toast('Оплата записана');
+    });
+    Array.prototype.forEach.call(root.querySelectorAll('[data-card]'), function (tr) {
+      tr.addEventListener('keydown', function (e) { if (e.key === 'Enter') cardDialog(tr.getAttribute('data-card')); });
+    });
+  };
+  var go = E.mount(document.getElementById('root'), draw);
 })();
 </script>
 </body>

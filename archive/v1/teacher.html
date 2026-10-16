@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#135685">
+<title>GSC Study · кабинет учителя</title>
+<link rel="icon" href="../../assets/brand-logo.png">
+<link rel="stylesheet" href="../../app/style.css">
+<link rel="stylesheet" href="../../app/brand.css">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+<div class="g-wrap" id="root"></div>
+<dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
+
+<script src="../../app/course.js"></script>
+<script src="data.js"></script>
+<script src="../../app/schedule.js"></script>
+<script>
+(function () {
+  'use strict';
+  var G = window.GSC;
+  var SCHED = window.SCHED;
+
+  var root = document.getElementById('root');
+  var dlg  = document.getElementById('dlg');
+  var dlgBody = document.getElementById('dlgBody');
+
+  /* Кабинет работает на одних данных со всей экосистемой. Учителя
+     переключаются списком — у каждого свои ученики, ставка и зарплата. */
+  var S = { teacher: 't1', view: 'board', log: G.seedLog.slice() };
+
+  function say(text) {
+    var el = document.getElementById('gToast');
+    if (!el) return;
+    el.textContent = text; el.style.display = 'block';
+    clearTimeout(say._t);
+    say._t = setTimeout(function () { el.style.display = 'none'; }, 3000);
+  }
+  function log(text) {
+    S.log.unshift({ at: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }), text: text });
+  }
+  function each(sel, fn) { Array.prototype.forEach.call(root.querySelectorAll(sel), fn); }
+  function me() { return G.byTeacher(S.teacher); }
+  function mine() { return G.students.filter(function (s) { return s.teacher === S.teacher; }); }
+  function findLesson(id) {
+    var found = null;
+    G.students.forEach(function (s) {
+      s.lessons.forEach(function (l) { if (l.id === id) { l.student = s; found = l; } });
+    });
+    return found;
+  }
+
+  function render() {
+    var t = me(), live = mine();
+    var all = { lessons: 0, confirmed: 0, hold: 0, students: live.length };
+    live.forEach(function (s) {
+      var st = G.stat(s);
+      all.lessons += st.accrued; all.confirmed += st.confirmed; all.hold += st.hold;
+    });
+
+    root.innerHTML =
+      '<div class="g-top">' +
+        '<img class="g-logo" src="../../assets/brand-logo.png" alt="">' +
+        '<h1>Кабинет учителя</h1>' +
+        '<select class="g-field" id="pick" style="width:auto;min-width:210px">' +
+          G.teachers.map(function (x) {
+            return '<option value="' + x.id + '"' + (x.id === S.teacher ? ' selected' : '') + '>' +
+                   G.esc(x.name) + '</option>';
+          }).join('') +
+        '</select>' +
+        '<div class="g-tabs">' +
+          '<button data-view="board"' + (S.view === 'board' ? ' class="on"' : '') + '>Доска</button>' +
+          '<button data-view="week"'  + (S.view === 'week'  ? ' class="on"' : '') + '>График</button>' +
+          '<button data-view="report"' + (S.view === 'report' ? ' class="on"' : '') + '>Отчёты</button>' +
+        '</div>' +
+        '<a class="g-mini" href="demo.html" style="text-decoration:none">К демо</a>' +
+      '</div>' +
+      '<div id="gToast" class="g-toast"></div>' +
+      '<div class="g-note">Отметку «проведён» учитель ставит сам — это основание для зарплаты. ' +
+        'Раз в две недели клиент подтверждает уроки: подтверждённое уходит в выплату, ' +
+        'спорное и без ответа висит на проверке у администратора.</div>' +
+
+      '<div class="g-kpis">' +
+        '<div class="g-kpi"><b>' + all.students + '</b><span>учеников</span></div>' +
+        '<div class="g-kpi"><b>' + G.money(all.lessons) + '</b><span>начислено по журналу</span></div>' +
+        '<div class="g-kpi green"><b>' + G.money(all.confirmed) + '</b><span>подтверждено клиентами</span></div>' +
+        '<div class="g-kpi' + (all.hold ? ' hot' : '') + '"><b>' + G.money(all.hold) + '</b><span>на проверке</span></div>' +
+      '</div>' +
+
+      (S.view === 'board' ? board(t, live)
+       : S.view === 'week' ? week(t, live)
+       : report(t, live));
+
+    var pick = root.querySelector('#pick');
+    if (pick) pick.onchange = function () { S.teacher = pick.value; render(); };
+    each('[data-view]', function (b) {
+      b.onclick = function () { S.view = b.getAttribute('data-view'); render(); };
+    });
+    if (S.view === 'board') wireBoard();
+  }
+
+  /* ── доска: ученики и журнал ─────────────────────────────────────── */
+  function board(t, live) {
+    if (!live.length) return '<div class="g-empty">Учеников пока нет.</div>';
+    return live.map(rowOf).join('');
+  }
+
+  function rowOf(s) {
+    var st = G.stat(s);
+    var lv = G.levelOf(s);
+    return '<div class="g-card">' +
+      '<div class="g-who">' +
+        '<span class="ava">' + G.esc(G.initial(s.name)) + '</span>' +
+        '<span><b>' + G.esc(s.name) + '</b><span class="ph">' + G.esc(G.phoneFmt(s.phone)) + '</span></span>' +
+        '<span class="tags">' +
+          '<span class="g-tag">' + G.esc(G.courseBadge(s)) + '</span>' +
+          '<span class="g-tag">старт ' + G.dateRu(s.started) + '</span>' +
+          '<span class="g-tag">' + G.money(s.rate) + ' за урок</span>' +
+          '<span class="g-tag g">' + G.esc(s.pay) + '</span>' +
+        '</span>' +
+      '</div>' +
+      '<div class="g-meta">График: <i>' + G.esc(G.dayNames(s.days)) + ', ' + G.esc(s.time) + '</i>' +
+        (s.goal ? ' · цель: <i>' + G.esc(s.goal) + '</i>' : '') +
+        (s.note ? '<br>' + G.esc(s.note) : '') + '<br>' +
+        'В курсе: <i>урок ' + s.nextCourse + ' из 14</i> · начислено <i>' + G.money(st.accrued) +
+        '</i>, подтверждено <i>' + G.money(st.confirmed) + '</i>, на проверке <i>' + G.money(st.hold) + '</i></div>' +
+      G.periods.map(function (p) {
+        var les = s.lessons.filter(function (l) { return l.period === p.id; });
+        if (!les.length) return '';
+        return '<div style="margin-bottom:8px"><span class="g-tag" style="display:inline-block;margin-bottom:6px">' +
+          G.esc(p.label) + (p.closed ? '' : ' · идёт') + '</span>' +
+          les.map(function (l) { return lesLine(l); }).join('') + '</div>';
+      }).join('') +
+      '<div class="g-acts"><button class="g-btn" data-plan="' + s.id + '">Взять следующий урок из курса</button></div>' +
+    '</div>';
+  }
+
+  function lesLine(l) {
+    var pill;
+    if (l.resolved === 'paid')         pill = '<span class="g-pill ok">к выплате</span>';
+    else if (l.resolved === 'void')   pill = '<span class="g-pill bad">снят</span>';
+    else if (l.client === 'no')       pill = '<span class="g-pill bad">клиент: не прошёл</span>';
+    else if (l.client === 'yes' && !l.teacherDone) pill = '<span class="g-pill bad">клиент подтвердил, отметки нет</span>';
+    else if (l.client === 'yes' && l.quality != null && l.quality <= 2) pill = '<span class="g-pill bad">качество ' + l.quality + '/5</span>';
+    else if (l.client === 'yes')      pill = '<span class="g-pill ok">подтверждён</span>';
+    else if (G.period(l.period).closed) pill = '<span class="g-pill hold">ждём клиента</span>';
+    else                               pill = '<span class="g-pill wait">период не закрыт</span>';
+
+    return '<div class="g-les' + (l.teacherDone ? '' : ' off') + '">' +
+      '<input type="checkbox" data-done="' + l.id + '"' + (l.teacherDone ? ' checked' : '') +
+        ' title="Урок проведён — отметка учителя">' +
+      '<span class="d">' + G.dateRu(l.date) + '</span>' +
+      '<span class="tp' + (l.topic ? '' : ' empty') + '" title="' + G.esc(l.homework || '') + '">' +
+        G.esc(l.topic || 'тема не задана') + '</span>' + pill +
+    '</div>';
+  }
+
+  function wireBoard() {
+    each('[data-done]', function (b) {
+      b.onchange = function () {
+        var l = findLesson(b.getAttribute('data-done'));
+        l.teacherDone = b.checked;
+        log('Учитель ' + (b.checked ? 'отметил урок' : 'снял отметку') + ': ' + l.student.name + ' · ' + G.dateRu(l.date));
+        render();
+        say(b.checked ? 'Урок отмечен' : 'Отметка снята');
+      };
+    });
+    each('[data-plan]', function (b) {
+      b.onclick = function () { planDialog(G.byId(b.getAttribute('data-plan'))); };
+    });
+  }
+
+  /* Окно готового урока из курса школы. */
+  function planDialog(s) {
+    var p = G.plan(s, s.nextCourse);
+    if (!p) return;
+    open('<h3>' + G.esc(G.courseBadge(s)) + ' · урок ' + p.n + ' из 14</h3>' +
+      '<div class="sub">' + G.esc(s.name) + ' · следующий урок курса. Всё ниже уже снято ' +
+        'с методички — учителю остаётся провести занятие.</div>' +
+      '<div style="font-size:16px;font-weight:800;margin-bottom:2px;font-family:var(--head)">' + G.esc(p.title) + '</div>' +
+      '<div style="font-size:13.5px;color:var(--muted);margin-bottom:12px">' + G.esc(p.subtitle) + '</div>' +
+      '<div class="g-rule">' + G.esc(p.rule) + '</div>' +
+      '<div style="font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">Слова урока</div>' +
+      '<div class="g-words">' + p.words.map(function (w) { return '<span>' + G.esc(w) + '</span>'; }).join('') + '</div>' +
+      '<div class="sub" style="margin-bottom:0">В журнал ляжет тема «' + G.esc(p.topic) + '» и домашка из слов и заданий курса.</div>' +
+      '<div class="dlg-foot"><button id="no">Закрыть</button>' +
+        '<button class="go" id="ok">Взять в журнал</button></div>');
+    dlgBody.querySelector('#no').onclick = close;
+    dlgBody.querySelector('#ok').onclick = function () {
+      var target = s.lessons.filter(function (l) { return !l.teacherDone; })[0];
+      if (!target) target = s.lessons[s.lessons.length - 1];
+      target.topic = p.topic; target.homework = p.homework; target.courseId = p.id;
+      s.nextCourse = Math.min(p.n + 1, 14);
+      log('Учитель взял из курса: ' + s.name + ' · урок ' + p.n + ' «' + p.title + '»');
+      close(); render(); say('Урок ' + p.n + ' подставлен в журнал');
+    };
+  }
+
+  /* ── график: та же сетка, что у администратора ────────────────────── */
+  function week(t, live) {
+    var cards = live.map(function (s) {
+      return { name: s.name, days: s.days, time_at: s.time, format: 'individual', archived: false };
+    });
+    return '<div class="g-card"><h3>Неделя</h3>' +
+      '<div class="hint">Синее — занято, зелёное — свободно. Рабочие часы и запись учеников ' +
+        'ведёт администратор.</div>' +
+      SCHED.grid(t, cards, false) +
+    '</div>';
+  }
+
+  /* ── отчёты: по ученикам и зарплата по месяцам ────────────────────── */
+  function report(t, live) {
+    var byMonth = {};
+    live.forEach(function (s) {
+      s.lessons.forEach(function (l) {
+        if (!l.teacherDone || l.resolved === 'void') return;
+        var key = l.date.slice(0, 7);
+        var row = byMonth[key] || (byMonth[key] = { key: key, lessons: 0, sum: 0 });
+        row.lessons++; row.sum += s.rate;
+      });
+    });
+    var sal = Object.keys(byMonth).sort().reverse().map(function (k) { return byMonth[k]; });
+    var totalSum = sal.reduce(function (a, r) { return a + r.sum; }, 0);
+    var totalLes = sal.reduce(function (a, r) { return a + r.lessons; }, 0);
+
+    return '<div class="g-card"><h3>По ученикам</h3>' +
+      '<div class="hint">Начислено — по отметкам учителя. Подтверждено — клиентом. ' +
+        'План — отметки без учёта будущих периодов.</div>' +
+      '<div class="scrollx"><table><thead><tr>' +
+        '<th>Ученик</th><th>Уровень</th><th>График</th>' +
+        '<th class="num">В журнале</th><th class="num">Подтверждено</th><th class="num">Спор</th>' +
+        '<th class="num">К выплате</th><th class="num">На проверке</th>' +
+      '</tr></thead><tbody>' +
+      live.map(function (s) {
+        var st = G.stat(s);
+        return '<tr><td><b>' + G.esc(s.name) + '</b></td>' +
+          '<td>' + G.esc(G.courseBadge(s)) + '</td>' +
+          '<td>' + G.esc(G.dayNames(s.days)) + ', ' + G.esc(s.time) + '</td>' +
+          '<td class="num">' + st.lessons + '</td>' +
+          '<td class="num">' + st.okCount + '</td>' +
+          '<td class="num">' + (st.disputes || '—') + '</td>' +
+          '<td class="num">' + G.money(st.confirmed) + '</td>' +
+          '<td class="num">' + (st.hold ? G.money(st.hold) : '—') + '</td></tr>';
+      }).join('') +
+      '</tbody></table></div></div>' +
+
+      '<div class="g-card"><h3>Зарплата по месяцам</h3>' +
+      '<div class="hint">Месяц — календарный, в котором прошёл урок. Ставка — из карточки ученика.</div>' +
+      '<div class="scrollx"><table><thead><tr>' +
+        '<th>Месяц</th><th class="num">Уроков</th><th class="num">К выплате</th>' +
+      '</tr></thead><tbody>' +
+      (sal.length ? sal.map(function (r) {
+        return '<tr><td>' + G.esc(G.monthRu(r.key)) + '</td>' +
+               '<td class="num">' + r.lessons + '</td>' +
+               '<td class="num">' + G.money(r.sum) + '</td></tr>';
+      }).join('') : '<tr><td colspan="3">Проведённых уроков пока нет</td></tr>') +
+      '</tbody><tfoot><tr><td>Всего</td><td class="num">' + totalLes + '</td>' +
+      '<td class="num">' + G.money(totalSum) + '</td></tr></tfoot></table></div></div>';
+  }
+
+  /* ── окна ────────────────────────────────────────────────────────── */
+  function open(html) { dlgBody.innerHTML = html; if (!dlg.open) dlg.showModal(); }
+  function close() { dlg.close(); }
+
+  render();
+})();
+</script>
+</body>
+</html>

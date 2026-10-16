@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#135685">
+<title>GSC Study · подтверждение уроков</title>
+<link rel="icon" href="assets/brand-logo.png">
+<link rel="stylesheet" href="app/style.css">
+<link rel="stylesheet" href="app/brand.css">
+<link rel="stylesheet" href="app/eco.css">
+</head>
+<body class="eco">
+<main class="c-wrap" id="root"></main>
+
+<script src="config.js"></script>
+<script src="app/course.js"></script>
+<script src="app/control.js"></script>
+<script src="app/data.js"></script>
+<script src="app/eco.js"></script>
+<script src="app/confirm_ui.js"></script>
+<script>
+(function () {
+  'use strict';
+  var C = CTRL, D = DEMO, B = window.BRAND || {};
+  var token = (/[?&]t=([^&]+)/.exec(location.search) || [])[1];
+  token = token ? decodeURIComponent(token) : '';
+  var root = document.getElementById('root');
+
+  /* Без ссылки — это показ: выбираем клиента, как будто он открыл
+     сообщение в WhatsApp. С ссылкой — экран ровно как у клиента, без
+     навигации демо. */
+  if (!token) {
+    E.shell('client');
+    root.className = 'e-page';
+    E.mount(root, function () {
+      var st = D.load();
+      return '<div class="e-head"><div><span class="e-eyebrow">Клиент</span><h1>Экран клиента</h1>' +
+        '<p>Раз в две недели родитель или взрослый ученик получает в WhatsApp ссылку и за минуту отмечает, ' +
+        'были ли уроки. Без приложения, без пароля. Выберите, чьими глазами посмотреть.</p></div></div>' +
+        '<section class="e-card flush"><div class="e-list">' + st.requests.slice().sort(function (a, b) {
+          return a.period_key.localeCompare(b.period_key) || a.card_id.localeCompare(b.card_id);
+        }).map(function (r) {
+          var card = D.byId(st.cards, r.card_id), p = C.periodByKey(r.period_key);
+          return '<div class="e-li">' + E.who(card.name, C.periodLabel(p, 'ru') + ' · учитель ' + D.teacherOf(st, card).name) +
+            (r.answered_at ? '<span class="e-chip ok">ответил ' + E.when(r.answered_at) + '</span>'
+              : '<span class="e-chip warn">ждёт ответа</span>') +
+            '<div class="e-acts"><a class="e-btn sm" href="confirm.html?t=' + encodeURIComponent(r.token) + '">Открыть как клиент →</a></div></div>';
+        }).join('') + '</div></section>';
+    });
+    return;
+  }
+
+  CONFIRM.mount(root, {
+    load: function (tk) { return D.confirmPayload(D.load(), tk); },
+    submit: function (tk, answers, note) { return D.act.answer(tk, answers, note); }
+  }, {
+    token: token, logo: B.logo, school: B.name, lang: 'ru',
+    note: 'Демо: так клиент видит ссылку из WhatsApp. После ответа загляните в ' +
+      '<a href="proverka.html">контроль уроков</a> — расхождения уже там.'
+  });
+})();
+</script>
+</body>
+</html>

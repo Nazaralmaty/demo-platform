@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#135685">
+<title>GSC Study · система оповещений</title>
+<link rel="icon" href="../../assets/brand-logo.png">
+<link rel="stylesheet" href="../../app/style.css">
+<link rel="stylesheet" href="../../app/brand.css">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+<div class="g-wrap" id="root"></div>
+
+<script src="../../app/course.js"></script>
+<script src="data.js"></script>
+<script>
+(function () {
+  'use strict';
+  var G = window.GSC;
+
+  var root = document.getElementById('root');
+  var S = { student: 's2', log: G.seedLog.slice(), sent: 0 };
+
+  function say(text) {
+    var el = document.getElementById('gToast');
+    if (!el) return;
+    el.textContent = text; el.style.display = 'block';
+    clearTimeout(say._t);
+    say._t = setTimeout(function () { el.style.display = 'none'; }, 3000);
+  }
+  function log(text) {
+    S.log.unshift({ at: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }), text: text });
+  }
+  function each(sel, fn) { Array.prototype.forEach.call(root.querySelectorAll(sel), fn); }
+
+  /* Тексты сообщений. Каждый — из данных: имена, ссылки и суммы считает
+     система, а не пишет администратор руками. */
+  function reminderText(s, p) {
+    var n = s.lessons.filter(function (l) { return l.period === p.id && l.teacherDone; }).length;
+    return 'GSC Study · ' + s.name + '. Напоминаем: ' + G.plural(n, 'урок ждёт', 'урока ждут', 'уроков ждут') +
+      ' подтверждения за ' + p.label + '. ' + G.demoUrl + s.id +
+      ' Без ответа начисление учителю встаёт на проверку.';
+  }
+  function alertText(t) {
+    var s = t.student, sum = t.lessons.length * s.rate;
+    if (t.kind === 'silent')
+      return 'Расхождение: ' + s.name + ' не подтвердил уроки за ' + t.period.label +
+        ' (' + G.plural(t.lessons.length, 'урок', 'урока', 'уроков') + ', ' + G.money(sum) +
+        ' на проверке). Напишите клиенту: ' + G.demoUrl + s.id;
+    var l = t.lessons[0], d = G.dateRu(l.date);
+    if (t.kind === 'dispute')
+      return 'Расхождение: ' + s.name + ', ' + d + '. Учитель отметил урок, клиент сказал «не прошёл». ' +
+        G.money(sum) + ' на проверке.';
+    if (t.kind === 'ghost')
+      return 'Расхождение: ' + s.name + ', ' + d + '. Клиент подтвердил урок, которого нет в журнале учителя.';
+    return 'Расхождение: ' + s.name + ', ' + d + '. Клиент подтвердил урок и поставил качество ' + l.quality + ' из 5.';
+  }
+
+  function render() {
+    var s = G.byId(S.student);
+    var tk = G.tickets();
+    var silent = tk.filter(function (t) { return t.kind === 'silent'; });
+    var disputes = tk.filter(function (t) { return t.kind !== 'silent'; });
+    var p = G.requestFor(s);
+
+    root.innerHTML =
+      '<div class="g-top">' +
+        '<img class="g-logo" src="../../assets/brand-logo.png" alt="">' +
+        '<h1>Система оповещений</h1>' +
+        '<a class="g-mini" href="demo.html" style="text-decoration:none">К демо</a>' +
+      '</div>' +
+      '<div id="gToast" class="g-toast"></div>' +
+      '<div class="g-note">Сообщения считаются из тех же данных, что и журнал: имена, ссылки, суммы. ' +
+        'Никто ничего не пишет руками — система сама знает, кому, когда и что уйдёт.</div>' +
+
+      /* ── шаблоны ── */
+      '<div class="g-card"><h3>Три сообщения, которые уходят сами</h3>' +
+        '<div class="hint">Клиенту — раз в две недели, после закрытия периода (SMS и WhatsApp). ' +
+          'Напоминание — если клиент молчит. Администратору — каждое расхождение.</div>' +
+        '<div class="scrollx"><table style="min-width:560px"><tbody>' +
+          '<tr><td style="width:190px"><span class="g-pill info">Клиенту · 2 недели</span></td>' +
+            '<td style="white-space:normal">Подтвердить уроки за период: ссылка, одна кнопка, минута. ' +
+            'Уходит автоматически 15-го и 29-го числа.</td></tr>' +
+          '<tr><td><span class="g-pill info">Клиенту · напоминание</span></td>' +
+            '<td style="white-space:normal">Если через два дня ответа нет: короткое напоминание и честно — ' +
+            'без ответа начисление учителю встаёт на проверку.</td></tr>' +
+          '<tr><td><span class="g-pill bad">Админу · расхождение</span></td>' +
+            '<td style="white-space:normal">Сразу, как клиент ответил: спор, молчание, урок без отметки, ' +
+            'низкая оценка. Сумма на проверке указана в тексте.</td></tr>' +
+        '</tbody></table></div></div>' +
+
+      /* ── телефон клиента ── */
+      '<div class="g-card"><h3>Телефон клиента</h3>' +
+        '<div class="hint">Что видит ' + G.esc(s.name) + ' в WhatsApp. Переключите ученика — лента меняется.</div>' +
+        '<select class="g-field" id="gPick" style="width:auto;min-width:230px;margin-bottom:14px">' +
+          G.students.map(function (x) {
+            return '<option value="' + x.id + '"' + (x.id === s.id ? ' selected' : '') + '>' +
+                   G.esc(x.name) + ' · ' + G.esc(G.courseBadge(x)) + '</option>';
+          }).join('') +
+        '</select>' +
+        phoneMock(s) +
+      '</div>' +
+
+      /* ── очередь ── */
+      '<div class="g-card"><h3>Очередь отправки на сейчас</h3>' +
+        '<div class="hint">Собирается из данных прямо сейчас: кто не ответил — получит напоминание, ' +
+          'каждое расхождение — алерт администратору.</div>' +
+        (tk.length === 0
+          ? '<div class="g-empty">Очередь пуста: все периоды подтверждены, расхождений нет.</div>'
+          : '<div class="g-acts">' +
+              '<button class="g-btn" id="gRemind"' + (silent.length ? '' : ' disabled') + '>Напоминание клиентам (' + silent.length + ')</button>' +
+              '<button class="g-btn quiet" id="gAlert">Алерт администратору (' + tk.length + ')</button>' +
+            '</div>' +
+            '<div class="scrollx" style="margin-top:14px"><table style="min-width:640px"><thead><tr>' +
+              '<th>Кому</th><th>Сообщение</th><th>Канал</th><th></th>' +
+            '</tr></thead><tbody>' +
+            silent.map(function (t) {
+              return '<tr><td><b>' + G.esc(t.student.name) + '</b></td>' +
+                '<td style="white-space:normal;min-width:280px">' + G.esc(reminderText(t.student, t.period)) + '</td>' +
+                '<td>WhatsApp</td><td class="num"><button class="g-mini" data-send="' + t.student.id + '">Отправить</button></td></tr>';
+            }).join('') +
+            disputes.map(function (t) {
+              return '<tr><td><b>Администратор</b> · ' + G.esc(t.student.name) + '</td>' +
+                '<td style="white-space:normal;min-width:280px">' + G.esc(alertText(t)) + '</td>' +
+                '<td>Telegram</td><td class="num"><button class="g-mini" data-alert="' + t.id + '">Отправить</button></td></tr>';
+            }).join('') +
+            '</tbody></table></div>') +
+      '</div>' +
+
+      /* ── журнал ── */
+      '<div class="g-card"><h3>Журнал отправок</h3>' +
+        '<div class="g-log">' + S.log.slice(0, 12).map(function (r) {
+          return '<div><b>' + r.at + '</b> · ' + G.esc(r.text) + '</div>';
+        }).join('') + '</div></div>';
+
+    var pick = root.querySelector('#gPick');
+    if (pick) pick.onchange = function () { S.student = pick.value; render(); };
+    var rem = root.querySelector('#gRemind');
+    if (rem) rem.onclick = function () {
+      silent.forEach(function (t) {
+        log('Напоминание отправлено (WhatsApp): ' + t.student.name + ' · ' + t.period.label);
+      });
+      say('Напоминания отправлены: ' + silent.length);
+      render();
+    };
+    var al = root.querySelector('#gAlert');
+    if (al) al.onclick = function () {
+      tk.forEach(function (t) { log('Алерт отправлен (Telegram): администратору · ' + t.student.name + ' · ' + G.TICK[t.kind].tag); });
+      say('Алерты отправлены: ' + tk.length);
+      render();
+    };
+    each('[data-send]', function (b) {
+      b.onclick = function () {
+        var st = G.byId(b.getAttribute('data-send'));
+        log('Напоминание отправлено (WhatsApp): ' + st.name);
+        say('Напоминание отправлено'); render();
+      };
+    });
+    each('[data-alert]', function (b) {
+      b.onclick = function () {
+        var t = G.tickets().filter(function (x) { return x.id === b.getAttribute('data-alert'); })[0];
+        log('Алерт отправлен (Telegram): администратору · ' + t.student.name + ' · ' + G.TICK[t.kind].tag);
+        say('Алерт отправлен'); render();
+      };
+    });
+  }
+
+  /* Телефон с пузырями: что реально лежит в чате ученика. */
+  function phoneMock(s) {
+    var tk = G.tickets().filter(function (t) { return t.student.id === s.id && t.kind === 'silent'; })[0];
+    var p = G.requestFor(s);
+    var bubbles = [];
+
+    /* Утренний запрос 16.10 за закрытый период, если он ещё без ответа. */
+    var p1 = G.periods[0];
+    var p1les = s.lessons.filter(function (l) { return l.period === 'p1'; });
+    if (p1.closed && p1les.length && p1les.some(function (l) { return l.client === null; })) {
+      bubbles.push({ at: '16.10, 10:04', text: G.letter(s, p1), mark: 'доставлено' });
+    }
+    /* Напоминание, если клиент молчит. */
+    if (tk) bubbles.push({ at: 'сейчас · в очереди', text: reminderText(s, p1), mark: 'не отправлено' });
+    /* Текущий период: если всё подтверждено — следующий запрос придёт 29.10. */
+    if (!tk && p.id === 'p2') {
+      bubbles.push({ at: '29.10 · запланировано', text: G.letter(s, p2), mark: 'по расписанию' });
+    }
+
+    if (!bubbles.length) {
+      bubbles.push({ at: '16.10, 14:40', text: 'Спасибо! Уроки подтверждены, спасибо за проверку.', mark: 'от клиента' });
+    }
+
+    return '<div class="g-phone">' +
+      '<div class="ph-bar"><span class="ava">G</span>GSC Study · уведомления</div>' +
+      bubbles.map(function (b) {
+        return '<div class="g-bub">' + G.esc(b.text) +
+          '<span class="tm">' + b.at + ' · ' + b.mark + '</span></div>';
+      }).join('') +
+    '</div>';
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>

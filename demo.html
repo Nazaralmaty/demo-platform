@@ -4,52 +4,94 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#135685">
-<title>GSC Study · демо-экосистема</title>
+<meta name="description" content="GSC Study · демо: платформа ученика, кабинет учителя, контроль уроков и зарплата в одной системе.">
+<title>GSC Study · демо системы школы</title>
 <link rel="icon" href="assets/brand-logo.png">
 <link rel="stylesheet" href="app/style.css">
 <link rel="stylesheet" href="app/brand.css">
-<link rel="stylesheet" href="app/admin.css">
+<link rel="stylesheet" href="app/eco.css">
 </head>
-<body>
-<div class="g-wrap">
-  <div class="g-top">
-    <img class="g-logo" src="assets/brand-logo.png" alt="GSC Study">
-    <h1>Демо-экосистема</h1>
-    <div class="g-tabs">
-      <a class="g-mini" href="index.html" style="text-decoration:none">Платформа</a>
-    </div>
-  </div>
+<body class="eco">
+<main class="e-page" id="root"></main>
 
-  <div class="g-note">
-    Выдуманная школа <b>GSC Study</b>, демо-мир на 16 октября 2026 года: 7 учеников,
-    3 учителя, два отчётных периода. Всё, что нажимается, живёт в памяти вкладки.
-    Ниже — вся экосистема целиком: ученическая платформа и служебные экраны школы.
-  </div>
+<script src="config.js"></script>
+<script src="app/course.js"></script>
+<script src="app/control.js"></script>
+<script src="app/data.js"></script>
+<script src="app/eco.js"></script>
+<script>
+(function () {
+  'use strict';
+  var C = CTRL, D = DEMO, B = window.BRAND || {};
+  E.shell('');
 
-  <div class="g-kpis">
-    <div class="g-kpi"><b>5</b><span>экранов в демо</span></div>
-    <div class="g-kpi"><b>7</b><span>учеников, 4 уровня</span></div>
-    <div class="g-kpi"><b>3</b><span>учителя</span></div>
-    <div class="g-kpi hot"><b>4</b><span>расхождения на проверке</span></div>
-  </div>
+  var PAINS = [
+    ['«Не знаю, что учитель делает с учеником»', 'Единый дашборд', 'dashboard.html',
+     'Уровень, урок курса, старт, график и оплата каждого ученика — одной строкой, по всем учителям.'],
+    ['«Каждый урок готовят с нуля»', 'Готовые уроки курса', 'teacher.html',
+     '56 уроков: правило, слова, задания и домашка уже лежат в журнале учителя на нужную дату.'],
+    ['«Зарплату считаем в Excel»', 'Ведомость считается сама', 'proverka.html',
+     'К выплате — только подтверждённые уроки, по ставке каждого ученика. Два раза в месяц.'],
+    ['«Учитель может приписать уроки»', 'Клиент подтверждает уроки', 'confirm.html',
+     'Раз в две недели — ссылка в WhatsApp. Спор, «не уверен», лишняя отметка — сразу администратору.'],
+    ['«Между уроками ученик всё забывает»', 'Платформа ученика', 'index.html',
+     'Видеоуроки, задания, словарь и игры на телефоне — на казахском и русском.']
+  ];
+  var STEPS = [
+    ['Обзор: вся школа одной таблицей', 'Кто у кого учится, на каком уроке курса, кто просрочил оплату.', 'dashboard.html'],
+    ['Учитель: урок готов, отметка в один клик', 'Сегодня у Аяжан урок 6 — материал открыт, после занятия жмём «Урок проведён».', 'teacher.html'],
+    ['Клиент: подтверждает уроки по ссылке', 'Тимур молчит три дня. Откройте его ссылку и ответьте, например, «не было» на один урок.', 'confirm.html?t=gsc-s2-' + D.P1.key],
+    ['Администратор: разбирает расхождения', 'Ответ Тимура уже в очереди. Решите спор — и посмотрите, как меняется ведомость.', 'proverka.html'],
+    ['Оповещения: что ушло в WhatsApp и Telegram', 'Те же события глазами клиента и администратора.', 'notifications.html']
+  ];
 
-  <div class="g-hub">
-    <a href="index.html"><b>Платформа ученика</b><span>4 уровня, 56 уроков с видео и разбором правила, задания, словарь флип-картами, три игры. Открывается на любом телефоне.</span><span class="go">Открыть →</span></a>
-    <a href="teacher.html"><b>Кабинет учителя</b><span>Журнал уроков, отметка «проведён», готовый урок из курса кнопкой «Взять из курса», недельный график и зарплата по месяцам.</span><span class="go">Открыть →</span></a>
-    <a href="dashboard.html"><b>Админ-кабинет</b><span>Единый дашборд: что делает каждый учитель по каждому ученику. Уровень, старт, ставка, период оплаты, начислено и на проверке.</span><span class="go">Открыть →</span></a>
-    <a href="proverka.html"><b>Контроль уроков</b><span>Ядро системы: учитель отмечает уроки, раз в две недели клиент подтверждает их, расхождения уходят администратору. Зарплата — от подтверждений.</span><span class="go">Открыть →</span></a>
-    <a href="notifications.html"><b>Система оповещений</b><span>Что приходит клиенту и администратору: запрос раз в две недели, напоминание, расхождение. Очередь отправки и журнал.</span><span class="go">Открыть →</span></a>
-  </div>
+  function draw() {
+    var an = D.analyze(), st = D.load(), m1 = C.money(C.forPeriod(an, D.P1));
+    return '<section class="h-hero"><div>' +
+        '<span class="e-eyebrow">Демо для ' + E.esc(B.name) + '</span>' +
+        '<h1>Школа, где <em>видно всё</em></h1>' +
+        '<p>Платформа для учеников, кабинет учителя и контроль уроков в одной системе. Учитель отмечает урок, ' +
+        'клиент раз в две недели подтверждает его в WhatsApp, зарплата считается сама, а каждое расхождение ' +
+        'администратор видит в ту же минуту.</p>' +
+        '<div class="e-acts"><a class="e-btn" href="#tour">Пройти демо за 5 минут ' + E.ICON.arrow + '</a>' +
+          '<a class="e-btn sec" href="index.html">Платформа ученика</a></div></div>' +
+      '<div class="h-board" aria-live="polite"><span class="h-cap">Сейчас в демо-школе</span>' +
+        '<div class="h-row"><span>Ученики · учителя</span><b>' + st.cards.length + ' · ' + st.teachers.length + '</b></div>' +
+        '<div class="h-row"><span>Уроков за 1–15 октября</span><b>' + m1.n.claimed + '</b></div>' +
+        '<div class="h-row"><span>К выплате: подтверждено клиентами</span><b>' + E.money(m1.payable) + '</b></div>' +
+        '<div class="h-row hot"><span>Не выплачивается до проверки</span><b>' + E.money(m1.review) + '</b></div>' +
+        '<div class="h-row hot"><span>Вопросов в очереди администратора</span><b>' + an.tickets.length + '</b></div>' +
+        '<span class="e-small" style="color:inherit;opacity:.75">Живые цифры: меняются, когда вы нажимаете в демо.</span>' +
+      '</div></section>' +
 
-  <div class="g-card" style="margin-top:16px">
-    <h3>Как устроено внутри</h3>
-    <div class="hint" style="margin-bottom:0">
-      Все экраны читают одни выдуманные данные из <b>app/data.js</b>: ученики, уроки,
-      отметки и подтверждения. Поэтому цифры на кабинете учителя, в админ-кабинете,
-      в контроле уроков и в оповещениях не могут разойтись. Темы и домашние задания
-      уроков — настоящие, из курса в <b>app/course.js</b>.
-    </div>
-  </div>
-</div>
+      '<h2 class="h-sect">Пять болей школы — и что с ними делает система</h2>' +
+      '<div class="h-pains">' + PAINS.map(function (p) {
+        return '<a class="h-pain" href="' + p[2] + '"><span class="pn">' + E.esc(p[0]) + '</span><b>' + E.esc(p[1]) + '</b>' +
+          '<span>' + E.esc(p[3]) + '</span><span class="go">Открыть →</span></a>';
+      }).join('') + '</div>' +
+
+      '<h2 class="h-sect" id="tour">Сценарий показа · 5 минут</h2>' +
+      '<div class="h-steps">' + STEPS.map(function (s) {
+        return '<a class="h-step" href="' + s[2] + '"><span><b>' + E.esc(s[0]) + '</b><span>' + E.esc(s[1]) + '</span></span>' +
+          '<span class="go">Открыть →</span></a>';
+      }).join('') + '</div>' +
+
+      '<section class="e-card" style="margin-top:28px"><div class="e-card-h"><h2>Как это устроено</h2></div>' +
+        '<dl class="e-dl">' +
+          '<div><dt>Учитель отметил урок</dt><dd>заявка, ещё не деньги</dd></div>' +
+          '<div><dt>Клиент подтвердил по ссылке, оценка 3–5</dt><dd style="color:var(--ok);font-weight:700">в зарплату — само</dd></div>' +
+          '<div><dt>«Не было», «не уверен», оценка 1–2, молчание</dt><dd>решает администратор</dd></div>' +
+          '<div><dt>Урок не по графику, сверх графика, задним числом</dt><dd>подозрительно — тоже к нему</dd></div>' +
+        '</dl>' +
+        '<p class="e-small" style="margin:14px 0 0">Это демо на выдуманных учениках. Всё, что вы нажимаете, хранится только в этом ' +
+          'браузере, кнопка «Сбросить» вверху возвращает исходное состояние. В рабочей версии — своя база, вход по номеру телефона ' +
+          'и рассылка через WhatsApp школы.</p>' +
+        '<div class="e-acts" style="margin-top:16px">' +
+          (window.waHref ? '<a class="e-btn wa" href="' + E.esc(waHref()) + '" target="_blank" rel="noopener">' + E.ICON.wa + ' Хочу так же в своей школе</a>' : '') +
+        '</div></section>';
+  }
+  E.mount(document.getElementById('root'), draw);
+})();
+</script>
 </body>
 </html>

@@ -6,7 +6,7 @@ window.BRAND = {
   logoWhite: "assets/brand-logo-white.png",
   whatsapp: "77085123700",   /* digits for wa.me; empty = Instagram only */
   instagram: "",
-  build: 1792110053,   /* кэш-версия: меняется при каждой сборке, иначе сервис-воркер отдаёт старые картинки */
+  build: 1792140000,   /* кэш-версия: меняется при каждой сборке, иначе сервис-воркер отдаёт старые картинки */
   video: true,   /* assets/teaser.mp4 — 34 s Forest English cut, ships with the template */
   teaser: '',    /* optional YouTube id; overrides nothing while video is true */
   texts: {

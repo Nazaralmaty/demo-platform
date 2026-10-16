@@ -1,4 +1,5 @@
-/* Проверка демо-экосистемы GSC Study без браузера: подставляем фейковый
+/* АРХИВ v1 — проверка прошлой версии демо (запуск из корня репозитория: node archive/v1/check_ecosystem.mjs).
+   Проверка демо-экосистемы GSC Study без браузера: подставляем фейковый
    window, грузим курс и данные, смотрим, что деньги и очередь расхождений
    сходятся на всех экранах.
 
@@ -19,7 +20,7 @@ const ctx = {
 ctx.globalThis = ctx;
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync('app/course.js', 'utf8'), ctx);
-vm.runInContext(fs.readFileSync('app/data.js', 'utf8'), ctx);
+vm.runInContext(fs.readFileSync('archive/v1/data.js', 'utf8'), ctx);
 const G = ctx.window.GSC;
 
 assert.ok(G, 'GSC данные загружены');
