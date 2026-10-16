@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#F5F4F0">
+<meta name="robots" content="noindex">
+<title>1English · проверка контроля уроков</title>
+<link rel="icon" href="assets/logo.png">
+<link rel="stylesheet" href="app/style.css">
+<link rel="stylesheet" href="app/eco-1english.css">
+<link rel="stylesheet" href="app/eco.css">
+<style>
+  .t-links{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-bottom:22px}
+  .t-link{display:grid;gap:6px;align-content:start;background:var(--card);border:1.5px solid var(--edge);border-radius:var(--e-r);
+          padding:18px;text-decoration:none;color:var(--ink)}
+  .t-link:hover,.t-link:focus-visible{border-color:var(--navy)}
+  .t-link b{font-size:16.5px}
+  .t-link span{font-size:14px;color:var(--muted)}
+  .t-link i{font-style:normal;font-weight:700;font-size:13px;color:var(--navy);margin-top:4px}
+  .t-steps{display:grid;gap:8px}
+  .t-steps label{display:grid;grid-template-columns:22px minmax(0,1fr);gap:12px;align-items:start;background:var(--card);
+                 border:1.5px solid var(--edge);border-radius:16px;padding:12px 14px;cursor:pointer}
+  .t-steps input{width:20px;height:20px;margin:2px 0 0;accent-color:var(--ok)}
+  .t-steps b{display:block;font-size:15px}
+  .t-steps span{display:block;font-size:14px;color:var(--muted);margin-top:2px}
+  .t-steps em{font-style:normal;color:var(--ok);font-weight:700}
+  .t-steps label:has(input:checked){border-color:color-mix(in srgb,var(--ok) 45%,transparent)}
+  .t-steps a{color:var(--navy);font-weight:700}
+  .t-h{font-size:19px;font-weight:800;letter-spacing:-.02em;margin:26px 0 12px}
+  .t-note{background:var(--soft);color:var(--navy);border-radius:16px;padding:14px 16px;font-size:14.5px;line-height:1.55;margin-bottom:18px}
+  .t-pre{background:var(--bg);border-radius:12px;padding:12px 14px;font:13px/1.55 ui-monospace,Menlo,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+</style>
+</head>
+<body class="eco">
+<main class="e-page">
+  <div class="e-head"><div>
+    <span class="e-eyebrow">Тест перед выкаткой</span>
+    <h1>1English · контроль уроков</h1>
+    <p>Копия ветки <b>claude/dreamy-allen-bs64xc</b> из 1english-platform. Здесь всё работает только на
+      тестовых данных: в базу 1English не уходит ни одного запроса, рабочий сайт 1English не тронут.
+      Пройдите шаги ниже. Если всё сходится, ветку можно переносить в 1english.</p>
+  </div></div>
+
+  <div class="t-note">Прогресс проверки сохраняется в этом браузере. Тестовые данные живут в памяти вкладки:
+    обновили страницу — всё вернулось как было.</div>
+
+  <div class="t-links">
+    <a class="t-link" href="dashboard.html?demo=1"><b>Дашборд администратора</b><span>Новая вкладка «Контроль», сводная с оплатой клиента, поля оплаты в «Изменить».</span><i>Открыть →</i></a>
+    <a class="t-link" href="teacher.html?demo=1"><b>Кабинет учителя</b><span>Глазами учителя: своя галочка «проведён», замок на подтверждённом, «Взять из курса».</span><i>Открыть →</i></a>
+    <a class="t-link" href="teacher.html?demo=admin"><b>Кабинет глазами админа</b><span>Галочка админа теперь значит «засчитать к выплате».</span><i>Открыть →</i></a>
+    <a class="t-link" href="confirm.html?demo=1"><b>Экран клиента</b><span>Ссылка из WhatsApp: «болды / болмады / білмеймін», оценка, казахский и русский.</span><i>Открыть →</i></a>
+  </div>
+
+  <h2 class="t-h">Что проверить</h2>
+  <div class="t-steps" id="steps">
+    <label><input type="checkbox" id="s1"><div><b>Дашборд → вкладка «Контроль»</b>
+      <span>На вкладке число вопросов. В очереди шесть типов: спор, подозрительная отметка, урок без отметки, «не уверен», низкая оценка, клиент молчит. <em>Должно быть 6.</em></span></div></label>
+    <label><input type="checkbox" id="s2"><div><b>Решить спор Аяжан: «Урок был — к выплате»</b>
+      <span><em>Вопросов станет 5, «Подтверждено, к выплате» вырастет на 1 150 ₸, число на вкладке — 5.</em> Попробуйте и «снять» на другом вопросе.</span></div></label>
+    <label><input type="checkbox" id="s3"><div><b>Ернар молчит → «Напомнить в WhatsApp»</b>
+      <span>Откроется WhatsApp с готовым текстом и личной ссылкой. Номер в тесте выдуманный — отправлять не нужно, смотрим текст. Переключите ҚАЗ / РУС.</span></div></label>
+    <label><input type="checkbox" id="s4"><div><b>Период: 16–30 сентября / 1–15 октября / текущий</b>
+      <span>Цифры потока и ведомость меняются по периоду. <em>К выплате в ведомости = только подтверждённое.</em></span></div></label>
+    <label><input type="checkbox" id="s5"><div><b>Сводная и «Изменить»</b>
+      <span>В «Сводной» колонка «Оплата клиента» (просрочено горит). В «Ученики» → «Изменить» есть поля «Оплата клиента» и «Оплачено до».</span></div></label>
+    <label><input type="checkbox" id="s6"><div><b>Кабинет учителя: замок</b>
+      <span>Уроки, на которые клиент уже ответил, — серые галочки, не нажимаются. <em>Переписать подтверждённое нельзя.</em></span></div></label>
+    <label><input type="checkbox" id="s7"><div><b>Кабинет учителя: снять и поставить отметку</b>
+      <span>Урок, который ждёт клиента, можно снять и поставить снова. Если урок был больше трёх дней назад — сверху появится вопрос <em>«отмечен задним числом»</em>.</span></div></label>
+    <label><input type="checkbox" id="s8"><div><b>«?» у урока → «Взять из курса»</b>
+      <span>Выберите урок курса — <em>тема и домашка подставятся сами</em>.</span></div></label>
+    <label><input type="checkbox" id="s9"><div><b>Экран клиента</b>
+      <span>По умолчанию казахский. Кнопка закрыта, пока нет ответа на каждый урок. После отправки — <em>«Рақмет!»</em>. Урок с пометкой «мұғалім белгілемеген» — это урок по графику без отметки учителя.</span></div></label>
+    <label><input type="checkbox" id="s10"><div><b>То же с телефона</b>
+      <span>Откройте эту страницу на телефоне: экран клиента, контроль и кабинет без прокрутки вбок.</span></div></label>
+  </div>
+
+  <h2 class="t-h">Что здесь проверить нельзя</h2>
+  <section class="e-card">
+    <p class="e-small" style="color:var(--ink);margin:0 0 10px">Настоящую базу: отметки, ответы клиентов по реальным ссылкам и защиту от приписок
+      проверяет SQL-тест на Postgres — он пройден (роли учителя, админа и клиента, правило выплаты совпадает с экраном
+      в 48 из 48 случаев). Чтобы потрогать руками на живой базе, не задевая 1English, — отдельный бесплатный проект Supabase:</p>
+    <div class="t-pre">1. supabase.com → New project (тестовый)
+2. SQL Editor → по очереди: backend/supabase_min.sql, backend/patch_2026-09-*.sql,
+   backend/patch_2026-10-16_control.sql
+3. В копии app/db.js — адрес и anon-ключ тестового проекта</div>
+    <p class="e-small" style="margin:10px 0 0">Файлы лежат рядом: <a href="backend/patch_2026-10-16_control.sql">patch_2026-10-16_control.sql</a>,
+      тесты — в папке backend/test. На рабочей базе 1English патч применяется только после вашей проверки.</p>
+  </section>
+
+  <p class="e-small" style="margin-top:22px"><a href="../demo.html">← К демо GSC Study</a></p>
+</main>
+<script>
+(function () {
+  var KEY = '1eng-test.checklist', saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) {}
+  Array.prototype.forEach.call(document.querySelectorAll('#steps input'), function (i) {
+    i.checked = !!saved[i.id];
+    i.addEventListener('change', function () {
+      saved[i.id] = i.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {}
+    });
+  });
+})();
+</script>
+</body>
+</html>

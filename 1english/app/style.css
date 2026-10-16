@@ -1,0 +1,482 @@
+/* 1English · платформа. Дизайн-система экранов.
+   ────────────────────────────────────────────────────────────────────────
+   Правила, которые здесь соблюдаются везде и не обсуждаются по месту:
+   • Тема одна — светлая. Инверсных секций нет.
+   • Акцент один — crimson, и он значит «твой прогресс, твоё место сейчас».
+     Navy — это не акцент, а цвет действия и заголовка (логотип 1English).
+   • Радиусы: кнопка — таблетка, карточка — 20px, чип и поле — 14px.
+   • Тень всегда со смещением и мягким размытием, тонированная в navy.
+   • Одно решение на экран. Если на экране две одинаково важные кнопки —
+     экран спроектирован неправильно.
+   ──────────────────────────────────────────────────────────────────────── */
+
+@font-face{font-family:'Golos Text';font-weight:400 900;font-display:swap;
+  src:url('../assets/fonts/GolosText-cyrillic-ext.woff2') format('woff2');
+  unicode-range:U+0460-052F,U+1C80-1C88,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F}
+@font-face{font-family:'Golos Text';font-weight:400 900;font-display:swap;
+  src:url('../assets/fonts/GolosText-cyrillic.woff2') format('woff2');
+  unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Golos Text';font-weight:400 900;font-display:swap;
+  src:url('../assets/fonts/GolosText-latin-ext.woff2') format('woff2');
+  unicode-range:U+0100-02AF,U+0304,U+0308,U+0329,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Golos Text';font-weight:400 900;font-display:swap;
+  src:url('../assets/fonts/GolosText-latin.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+:root{
+  /* светлая тема — значения по умолчанию */
+  --field:#EDEBE5;
+  --bg:#F5F4F0;
+  --card:#FFFFFF;
+  --ink:#0E1B2E;
+  --muted:#6B7A8C;
+  --faint:#B9C2CD;
+  --line:#E4E1DA;
+  --track:#E4E1DA;
+  --navy:#0A3161;
+  --on-navy:#FFFFFF;
+  --accent:#B31942;
+  --accent-soft:#FBECEF;
+  --ok:#1E7F4D;
+  --ok-soft:#E8F3EC;
+  --tab-bg:rgba(255,255,255,.94);
+
+  --r-card:20px;
+  --r-chip:14px;
+
+  --sh-1:0 1px 2px rgba(10,49,97,.05), 0 6px 18px rgba(10,49,97,.06);
+  --sh-2:0 2px 4px rgba(10,49,97,.07), 0 16px 34px rgba(10,49,97,.11);
+
+  --ease:cubic-bezier(.32,.72,0,1);
+  --pad:20px;
+  --tab-h:66px;
+}
+
+/* Тёмная тема. Синий бренда на тёмном фоне не читается как действие,
+   поэтому кнопка светлеет, а не остаётся navy. Красный акцент осветлён
+   до того же уровня контраста, что и в светлой теме. */
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --field:#080D14;
+    --bg:#0E1622;
+    --card:#17212F;
+    --ink:#E9EEF5;
+    --muted:#93A3B5;
+    --faint:#5C6B7D;
+    --line:#243040;
+    --track:#243040;
+    --navy:#5A9BEA;
+    --on-navy:#06121F;
+    --accent:#F2647F;
+    --accent-soft:#2A1B22;
+    --ok:#4BC98A;
+    --ok-soft:#132A20;
+    --tab-bg:rgba(23,33,47,.94);
+    --sh-1:0 1px 2px rgba(0,0,0,.34), 0 6px 18px rgba(0,0,0,.30);
+    --sh-2:0 2px 4px rgba(0,0,0,.40), 0 16px 34px rgba(0,0,0,.46);
+  }
+}
+:root[data-theme="dark"]{
+  --field:#080D14;
+  --bg:#0E1622;
+  --card:#17212F;
+  --ink:#E9EEF5;
+  --muted:#93A3B5;
+  --faint:#5C6B7D;
+  --line:#243040;
+  --track:#243040;
+  --navy:#5A9BEA;
+  --on-navy:#06121F;
+  --accent:#F2647F;
+  --accent-soft:#2A1B22;
+  --ok:#4BC98A;
+  --ok-soft:#132A20;
+  --tab-bg:rgba(23,33,47,.94);
+  --sh-1:0 1px 2px rgba(0,0,0,.34), 0 6px 18px rgba(0,0,0,.30);
+  --sh-2:0 2px 4px rgba(0,0,0,.40), 0 16px 34px rgba(0,0,0,.46);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:'Golos Text',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:var(--field);
+  color:var(--ink);
+  font-size:16px;line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+button,input{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+a{color:inherit;text-decoration:none}
+svg{display:block}
+img{max-width:100%;height:auto;align-self:flex-start}
+
+/* ── каркас ─────────────────────────────────────────────────────────── */
+.app{
+  max-width:480px;margin:0 auto;min-height:100svh;background:var(--bg);
+  position:relative;display:flex;flex-direction:column;
+  box-shadow:0 0 0 1px rgba(10,49,97,.05), 0 30px 80px rgba(10,49,97,.10);
+}
+.view{flex:1;display:flex;flex-direction:column;padding:0 var(--pad);
+      padding-top:calc(14px + env(safe-area-inset-top));
+      padding-bottom:calc(var(--tab-h) + 30px + env(safe-area-inset-bottom))}
+.view.plain{padding-bottom:calc(30px + env(safe-area-inset-bottom))}
+.enter{animation:enter .26s var(--ease) both}
+@keyframes enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ── типографика ────────────────────────────────────────────────────── */
+h1{font-size:30px;line-height:1.08;font-weight:800;letter-spacing:-.035em}
+h2{font-size:20px;line-height:1.2;font-weight:800;letter-spacing:-.02em}
+.sub{color:var(--muted);font-size:15px;line-height:1.5}
+.eyebrow{font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.02em}
+.num{font-variant-numeric:tabular-nums}
+
+/* ── шапка экрана ───────────────────────────────────────────────────── */
+.head{display:flex;align-items:center;gap:12px;min-height:44px;margin-bottom:18px}
+.head h1{flex:1;min-width:0}
+.iconbtn{width:42px;height:42px;border-radius:50%;background:var(--card);color:var(--navy);
+         display:grid;place-items:center;box-shadow:var(--sh-1);flex:none;
+         transition:transform .16s var(--ease)}
+.iconbtn:active{transform:scale(.92)}
+
+/* ── кнопки ─────────────────────────────────────────────────────────── */
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+  background:var(--navy);color:var(--on-navy);border-radius:999px;
+  padding:17px 22px;font-size:17px;font-weight:700;letter-spacing:-.01em;
+  box-shadow:0 2px 3px rgba(10,49,97,.14), 0 10px 22px rgba(10,49,97,.18);
+  transition:transform .16s var(--ease),opacity .16s;
+}
+.btn:active{transform:scale(.975)}
+.btn[disabled]{opacity:.32;box-shadow:none;pointer-events:none}
+.btn.ghost{background:transparent;color:var(--navy);box-shadow:inset 0 0 0 1.5px var(--line)}
+.btn.quiet{background:var(--card);color:var(--ink);box-shadow:var(--sh-1)}
+.btn.danger{background:transparent;color:var(--accent);box-shadow:inset 0 0 0 1.5px rgba(179,25,66,.25)}
+.dock{position:sticky;bottom:0;padding:14px 0 calc(6px + env(safe-area-inset-bottom));
+      background:linear-gradient(180deg,transparent,var(--bg) 22%)}
+
+/* ── карточка и строка списка ───────────────────────────────────────── */
+.card{background:var(--card);border-radius:var(--r-card);box-shadow:var(--sh-1)}
+.rows{display:flex;flex-direction:column;gap:10px}
+.row{
+  display:flex;align-items:center;gap:14px;width:100%;text-align:left;
+  background:var(--card);border-radius:var(--r-card);padding:16px;
+  box-shadow:var(--sh-1);transition:transform .16s var(--ease);
+}
+.row:active{transform:scale(.985)}
+.grow{flex:1;min-width:0}
+.row b{display:block;font-size:17px;font-weight:700;letter-spacing:-.015em}
+.cap{display:block;font-size:14px;color:var(--muted);margin-top:1px}
+.row .chev{color:var(--faint);flex:none}
+
+/* ── урок в списке: карточка, которая раскрывается на месте ─────────
+   Отдельного экрана урока нет специально: две секции по шагам — это и
+   есть урок, ради них не стоит уводить ученика на страницу и обратно. */
+.item{background:var(--card);border-radius:var(--r-card);box-shadow:var(--sh-1);overflow:hidden}
+.item + .item{margin-top:10px}
+.itop{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:16px;
+      transition:transform .16s var(--ease)}
+.itop:active{transform:scale(.99)}
+.itop .chev{color:var(--faint);flex:none;transition:transform .28s var(--ease)}
+.item.on .itop .chev{transform:rotate(90deg)}
+.panel{max-height:0;overflow:hidden;transition:max-height .3s var(--ease)}
+.item.on .panel{max-height:480px}
+/* подпись секции: теория, практика */
+.sgrp{padding:14px 16px 4px;border-top:1px solid var(--line);font-size:12px;font-weight:700;
+      color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.sgrp + .step{border-top:0}
+.step{display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+      padding:13px 16px;border-top:1px solid var(--line);
+      transition:background .16s}
+.step:active{background:var(--bg)}
+.step b{display:block;font-size:16px;font-weight:700;letter-spacing:-.01em}
+.step .cap{display:block;font-size:13.5px;color:var(--muted);margin-top:1px}
+.step .chev{color:var(--faint);flex:none}
+.smark{width:38px;height:38px;border-radius:12px;flex:none;display:grid;place-items:center;
+       background:var(--bg);color:var(--navy)}
+.smark.done{background:var(--ok-soft);color:var(--ok)}
+
+/* марка уровня и номер урока */
+.mark{width:52px;height:52px;border-radius:var(--r-chip);flex:none;display:grid;place-items:center;
+      background:var(--bg);color:var(--navy);font-weight:800;font-size:17px;letter-spacing:-.02em}
+.mark.on{background:var(--navy);color:#fff}
+.mark.done{background:var(--ok-soft);color:var(--ok)}
+
+/* ── прогресс ───────────────────────────────────────────────────────── */
+.bar{height:6px;border-radius:999px;background:var(--track);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:999px;background:var(--accent);
+       transition:width .5s var(--ease)}
+.steps{display:flex;gap:4px;margin-top:8px}
+.steps i{flex:1;height:4px;border-radius:999px;background:var(--track)}
+.steps i.on{background:var(--accent)}
+
+.summary{padding:22px 20px 20px;margin-bottom:22px;background:var(--card);
+         border-radius:var(--r-card);box-shadow:var(--sh-1)}
+.summary .big{font-size:38px;font-weight:800;letter-spacing:-.04em;line-height:1}
+.summary .row2{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px}
+
+/* ── обложка курса ──────────────────────────────────────────────────
+   Картинка — фон FLUX (app/covers), надписи кладутся вёрсткой: кириллицу
+   генератор рисует плохо, а вёрстка ещё и переводится и масштабируется. */
+.cover{position:relative;width:100%;aspect-ratio:16/9;border-radius:var(--r-card);overflow:hidden;
+       background:var(--navy-deep,#061428);box-shadow:var(--sh-2);margin-bottom:20px;
+       display:flex;flex-direction:column;justify-content:flex-end;padding:18px}
+.cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;align-self:auto}
+.cover::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(100deg,rgba(6,20,40,.94) 0%,rgba(6,20,40,.80) 44%,rgba(6,20,40,.10) 100%)}
+.cover > *{position:relative;z-index:2}
+.cover .brand{position:absolute;top:16px;left:16px;height:26px;width:auto;z-index:2;opacity:.92}
+.cover .code{align-self:flex-start;display:inline-flex;padding:5px 11px;border-radius:999px;
+             background:rgba(255,255,255,.14);color:#fff;font-size:12px;font-weight:700;
+             letter-spacing:.06em;margin-bottom:9px}
+.cover h2{color:#fff;font-size:clamp(28px,9vw,40px);line-height:.94;font-weight:800;
+          letter-spacing:-.04em;text-transform:uppercase}
+.cover p{color:#A9C0DC;font-size:14px;font-weight:600;margin-top:6px}
+
+/* ── чипы ───────────────────────────────────────────────────────────── */
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--card);border-radius:999px;
+      padding:7px 14px;font-size:13px;font-weight:700;color:var(--navy);box-shadow:var(--sh-1)}
+.chip.accent{background:var(--accent-soft);color:var(--accent);box-shadow:none}
+.chip.ok{background:var(--ok-soft);color:var(--ok);box-shadow:none}
+
+/* ── поле ввода ─────────────────────────────────────────────────────── */
+.field{width:100%;background:var(--card);border-radius:var(--r-chip);padding:18px;
+       font-size:22px;font-weight:700;text-align:center;letter-spacing:.04em;
+       box-shadow:inset 0 0 0 1.5px var(--line);transition:box-shadow .16s}
+.field:focus{outline:none;box-shadow:inset 0 0 0 2px var(--navy)}
+
+/* ── нижние вкладки ─────────────────────────────────────────────────── */
+.tabs{
+  position:fixed;left:0;right:0;bottom:0;z-index:30;
+  max-width:480px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);
+  background:var(--tab-bg);backdrop-filter:blur(14px);
+  box-shadow:0 -1px 0 var(--line);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.tabs.off{display:none}
+.tab{height:var(--tab-h);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+     color:var(--faint);font-size:11px;font-weight:700;letter-spacing:-.01em}
+.tab.on{color:var(--navy)}
+.tab:active{transform:scale(.94)}
+
+/* ── шторка выбора уровня ───────────────────────────────────────────── */
+.veil{position:fixed;inset:0;z-index:40;background:rgba(14,27,46,.42);
+      display:flex;align-items:flex-end;justify-content:center;animation:fade .2s var(--ease) both}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.sheet{width:100%;max-width:480px;background:var(--card);border-radius:26px 26px 0 0;
+       padding:26px var(--pad) calc(22px + env(safe-area-inset-bottom));
+       animation:rise .3s var(--ease) both}
+@keyframes rise{from{transform:translateY(100%)}to{transform:none}}
+.sheet .grip{width:38px;height:4px;border-radius:999px;background:var(--line);margin:0 auto 18px}
+
+/* ── урок: правило и примеры ────────────────────────────────────────── */
+.frame{position:relative;width:100%;aspect-ratio:16/9;border-radius:var(--r-card);overflow:hidden;
+       background:var(--navy);box-shadow:var(--sh-2);margin-bottom:20px}
+.frame iframe,.frame video{position:absolute;inset:0;width:100%;height:100%;border:0}
+.vcap{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;
+      letter-spacing:.06em;margin:0 0 8px 2px}
+.rule{background:var(--card);border-radius:var(--r-card);padding:18px;box-shadow:var(--sh-1);
+      font-size:16px;line-height:1.55;margin-bottom:20px}
+.ex{display:flex;align-items:flex-start;gap:12px;width:100%;text-align:left;padding:14px 4px;
+    border-bottom:1px solid var(--line)}
+.ex:last-child{border-bottom:0}
+.ex b{display:block;font-size:17px;font-weight:700;letter-spacing:-.01em}
+.ex .cap{display:block;font-size:14px;color:var(--muted);margin-top:2px}
+.ex .snd{color:var(--navy);opacity:.5;flex:none;margin-top:2px}
+.ex:active .snd{opacity:1}
+
+/* ── задание ────────────────────────────────────────────────────────── */
+.q{font-size:24px;line-height:1.3;font-weight:700;letter-spacing:-.025em;margin:8px 0 22px}
+.q .gap{color:var(--accent)}
+.opt{display:block;width:100%;text-align:left;background:var(--card);border-radius:var(--r-chip);
+     padding:17px 18px;font-size:17px;font-weight:600;box-shadow:inset 0 0 0 1.5px var(--line);
+     transition:transform .16s var(--ease),box-shadow .16s,background .16s}
+.opt:active{transform:scale(.985)}
+.opt.ok{background:var(--ok-soft);box-shadow:inset 0 0 0 2px var(--ok);color:var(--ok)}
+.opt.no{background:var(--accent-soft);box-shadow:inset 0 0 0 2px var(--accent);color:var(--accent)}
+.opt.mute{opacity:.45}
+.why{background:var(--card);border-radius:var(--r-chip);padding:15px 16px;font-size:15px;line-height:1.5;
+     color:var(--muted);box-shadow:var(--sh-1);animation:enter .22s var(--ease) both}
+.why b{color:var(--ink);font-weight:700}
+
+/* сборка предложения */
+.line{min-height:92px;background:var(--card);border-radius:var(--r-card);padding:12px;
+      display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;box-shadow:inset 0 0 0 1.5px var(--line)}
+.line.ok{box-shadow:inset 0 0 0 2px var(--ok)}
+.line.no{box-shadow:inset 0 0 0 2px var(--accent)}
+.bank{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.tok{background:var(--card);border-radius:12px;padding:11px 14px;font-size:16px;font-weight:600;
+     box-shadow:var(--sh-1);transition:transform .14s var(--ease),opacity .14s}
+.tok:active{transform:scale(.94)}
+.tok.used{opacity:0;pointer-events:none}
+.tok.inline{box-shadow:inset 0 0 0 1.5px var(--line)}
+
+/* ── карточка слова ─────────────────────────────────────────────────── */
+.wcard{background:var(--card);border-radius:26px;box-shadow:var(--sh-2);padding:34px 24px;
+       min-height:270px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+       text-align:center;gap:10px;animation:enter .24s var(--ease) both}
+.wcard .en{font-size:34px;font-weight:800;letter-spacing:-.035em;line-height:1.1}
+.wcard .ru{font-size:20px;font-weight:600;color:var(--navy)}
+.wcard .wex{color:var(--muted);font-size:15px;line-height:1.45}
+.wcard .hint{font-size:13px;color:var(--muted)}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* ── итог ─────────────────────────────────────────────────────────────
+   Свой класс, а не .done: .done — это «шаг пройден» у .mark и .smark, и
+   отступы итога вытягивали их галочку в столбик. */
+.fin{text-align:center;padding:40px 0 26px}
+.fin .score{font-size:64px;font-weight:800;letter-spacing:-.05em;line-height:1}
+.fin .cap{color:var(--muted);margin-top:6px}
+
+/* ── мелочи ─────────────────────────────────────────────────────────── */
+.note{font-size:13.5px;color:var(--muted);line-height:1.5;text-align:center}
+.toast{position:fixed;left:50%;bottom:calc(var(--tab-h) + 22px);transform:translateX(-50%);
+       background:#0E1B2E;color:#fff;padding:11px 18px;border-radius:999px;font-size:14px;font-weight:600;
+       z-index:60;animation:enter .2s var(--ease) both}
+.gap-lg{height:24px}
+.gap-sm{height:12px}
+
+@media (min-width:640px){
+  body{padding:0}
+  .app{min-height:100svh}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+
+/* ── пустой урок и закрытый шаг ─────────────────────────────────────
+   Урок без материала виден в списке: ученик должен понимать, что курс
+   больше, чем то, что уже открыли. Но он не притворяется доступным. */
+.item.empty .itop b{color:var(--muted)}
+.step.off{opacity:.42;pointer-events:none}
+.cover .swap{position:absolute;top:18px;right:16px;color:rgba(255,255,255,.72);z-index:2}
+
+/* ── главная: школа и курсы ─────────────────────────────────────────
+   Шапка во всю ширину экрана, поэтому она выходит из полей .view
+   отрицательными margin. Логотип школы лежит кружком на стыке шапки и
+   белого поля — так же, как в приложениях, откуда взят этот экран. */
+.hero{position:relative;margin:calc(-14px - env(safe-area-inset-top)) calc(-1 * var(--pad)) 0;
+      aspect-ratio:16/9;overflow:hidden;background:#061428}
+.hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;align-self:auto}
+.hero::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(6,20,40,.55) 0%,rgba(6,20,40,.30) 45%,rgba(6,20,40,.72) 100%)}
+/* inset:auto снимает растяжку от .hero img и должен стоять до top/left */
+.hero .brand{position:absolute;inset:auto;top:calc(30px + env(safe-area-inset-top));left:16px;
+             width:auto;height:26px;z-index:2;opacity:.95}
+.hero .lang{position:absolute;top:calc(26px + env(safe-area-inset-top));right:12px;z-index:2;
+            display:flex;gap:2px;padding:3px;border-radius:999px;background:rgba(6,20,40,.44);
+            backdrop-filter:blur(8px)}
+.hero .lang button{padding:7px 13px;border-radius:999px;font-size:13px;font-weight:800;
+                   letter-spacing:.02em;color:rgba(255,255,255,.72)}
+.hero .lang button.on{background:#fff;color:var(--ink)}
+
+.ava.logo{margin:-46px auto 12px;width:92px;height:92px;background:var(--card);
+          box-shadow:var(--sh-2);position:relative;z-index:3;padding:0}
+.ava.logo img{width:100%;height:100%;object-fit:cover;align-self:auto}
+
+.sect{font-size:19px;margin:24px 0 12px}
+
+/* карточка курса: обложка с названием, под ней строка с прогрессом */
+.ccard{display:block;width:100%;text-align:left;background:var(--card);border-radius:var(--r-card);
+       box-shadow:var(--sh-1);overflow:hidden;margin-bottom:14px;
+       transition:transform .16s var(--ease)}
+.ccard:active{transform:scale(.985)}
+.ccard .pic{position:relative;display:flex;flex-direction:column;justify-content:flex-end;
+            aspect-ratio:16/9;padding:16px;background:#061428;overflow:hidden}
+.ccard .pic img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;align-self:auto}
+.ccard .pic::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(100deg,rgba(6,20,40,.92) 0%,rgba(6,20,40,.74) 46%,rgba(6,20,40,.12) 100%)}
+.ccard .pic > *{position:relative;z-index:2}
+.ccard .code{align-self:flex-start;display:inline-flex;padding:5px 11px;border-radius:999px;
+             background:rgba(255,255,255,.16);color:#fff;font-size:12px;font-weight:700;
+             letter-spacing:.06em;margin-bottom:8px}
+.ccard .pic b{display:block;color:#fff;font-size:clamp(26px,8.4vw,36px);line-height:.94;
+              font-weight:800;letter-spacing:-.04em;text-transform:uppercase}
+.ccard .pic b.long{font-size:clamp(20px,6.2vw,28px)}
+.ccard .pic i{display:block;color:#A9C0DC;font-size:13.5px;font-weight:600;font-style:normal;margin-top:6px}
+.ccard .foot{display:flex;align-items:center;gap:12px;padding:14px 16px}
+.ccard .foot b{display:block;font-size:17px;font-weight:700;letter-spacing:-.015em}
+.ccard .pct{font-size:17px;font-weight:800;color:var(--accent);letter-spacing:-.02em;flex:none}
+.ccard .chev{color:var(--faint);flex:none}
+.ccard .bar{display:block;margin:0 16px 16px}
+
+/* ── профиль ────────────────────────────────────────────────────────── */
+.ava{--skin:#AEBECF;width:96px;height:96px;border-radius:50%;background:var(--bg);
+     box-shadow:var(--sh-1);display:grid;place-items:center;margin:6px auto 14px;
+     color:var(--navy);overflow:hidden}
+.ava svg{display:block}
+:root[data-theme="dark"] .ava{--skin:#42536A}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .ava{--skin:#42536A}}
+.who{text-align:center;margin-bottom:22px}
+.who h2{font-size:23px;letter-spacing:-.03em}
+.who p{color:var(--muted);font-size:15px;margin-top:2px}
+.group{background:var(--card);border-radius:var(--r-card);box-shadow:var(--sh-1);
+       overflow:hidden;margin-bottom:12px}
+.gr{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:14px 16px}
+.gr + .gr{border-top:1px solid var(--line)}
+.gr .ic{color:var(--muted);flex:none}
+.gr .lbl{display:block;font-size:13px;color:var(--muted)}
+.gr .val{display:block;font-size:17px;font-weight:700;letter-spacing:-.015em;margin-top:1px}
+.gr .chev{color:var(--faint);flex:none}
+.gr:active{background:var(--bg)}
+.pick{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.pick button{display:flex;align-items:center;justify-content:space-between;gap:10px;
+             padding:15px 16px;border-radius:var(--r-chip);background:var(--bg);
+             font-size:16px;font-weight:600;text-align:left}
+.pick button.on{background:var(--navy);color:var(--on-navy)}
+.pick button.on .tick{color:var(--on-navy)}
+
+/* согласие на обработку данных при входе */
+.agree{display:flex;align-items:flex-start;gap:10px;margin:16px 2px 0;
+       font-size:14px;line-height:1.45;color:var(--muted);cursor:pointer}
+.agree input{width:22px;height:22px;flex:none;accent-color:var(--navy);margin:0}
+.agree b{color:var(--navy);font-weight:700;text-decoration:underline;cursor:pointer}
+
+/* ── практика: чтение ───────────────────────────────────────────────
+   Текст урока с кликабельными словами урока. Слово — пунктир navy,
+   открытое — сплошная линия и мягкая подложка: видно, что уже смотрел. */
+.rtext{background:var(--card);border-radius:var(--r-card);box-shadow:var(--sh-1);padding:20px 18px;
+       font-size:19px;line-height:1.75;margin-bottom:10px}
+.rtext p + p{margin-top:12px}
+.rw{display:inline;padding:0 1px;font:inherit;color:var(--navy);font-weight:700;line-height:inherit;
+    border-bottom:2px dotted var(--navy);border-radius:3px}
+.rw.seen{background:rgba(10,49,97,.08);border-bottom-style:solid}
+.rcount{display:flex;align-items:center;gap:10px;margin-top:18px;font-size:13.5px;color:var(--muted)}
+.rcount .track{flex:1;height:6px;border-radius:999px;background:var(--track);overflow:hidden}
+.rcount .track i{display:block;height:100%;background:var(--accent);border-radius:999px;
+                 transform-origin:left;transition:transform .3s var(--ease)}
+
+/* флип-карта слова: всплывает снизу, переворачивается по нажатию */
+.fveil{padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+.flip{width:100%;max-width:420px;height:290px;perspective:1200px;cursor:pointer;animation:rise .3s var(--ease) both}
+.flip-in{position:relative;width:100%;height:100%;transition:transform .5s var(--ease);transform-style:preserve-3d}
+.flip.back .flip-in{transform:rotateY(180deg)}
+.flip .face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;
+            background:var(--card);border-radius:26px;box-shadow:var(--sh-2);padding:28px 24px;
+            display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px}
+.flip .face.b{transform:rotateY(180deg)}
+.flip .en{font-size:34px;font-weight:800;letter-spacing:-.035em;line-height:1.1}
+.flip .en.sm{font-size:20px;color:var(--muted);font-weight:700}
+.flip .form{font-size:14px;color:var(--muted)}
+.flip .tr{font-size:26px;font-weight:700;color:var(--navy)}
+.flip .wex{font-size:15px;color:var(--muted);line-height:1.45}
+.flip .hint{font-size:13px;color:var(--muted)}
+.flip .say{position:absolute;top:14px;right:14px;width:40px;height:40px;border-radius:50%;
+           background:var(--bg);color:var(--navy);display:grid;place-items:center}
+
+/* ── плашка «сегодня урок» над главной и уроками ──────────────────────
+   Navy; за час до начала — красная: это «твоё место сейчас». */
+.bn{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;
+    background:var(--navy);color:var(--on-navy);border-radius:18px;padding:14px 16px;margin:0 0 12px;
+    box-shadow:var(--sh-1);animation:enter .3s var(--ease) both}
+.bn.soon{background:var(--accent)}
+.bn svg{flex:none;margin-top:1px}
+.bn b{display:block;font-size:15.5px;font-weight:800;letter-spacing:-.01em;line-height:1.3}
+.bn span span{display:block;font-size:13.5px;opacity:.85;margin-top:2px;line-height:1.4}
+.who + #bn:not(:empty){margin-top:18px}
+
+/* полоска демо-режима: видно, что данные выдуманные */
+.demo-strip{position:sticky;top:0;z-index:50;background:var(--accent);color:#fff;text-align:center;
+            font-size:12.5px;font-weight:700;padding:6px 12px calc(6px);letter-spacing:.01em}
+/* та же флип-карта в шаге «Словарь»: стоит на экране, а не всплывает */
+.flip.wflip{margin:0 auto;animation:enter .24s var(--ease) both}

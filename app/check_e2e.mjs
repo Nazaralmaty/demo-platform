@@ -129,7 +129,8 @@ console.log('Экраны: 390 и 1280');
 const SCREENS = ['demo.html', 'dashboard.html', 'dashboard.html?view=teachers', 'dashboard.html?view=sched',
   'proverka.html', 'teacher.html', 'teacher.html?t=t3', 'notifications.html', 'confirm.html',
   'confirm.html?t=gsc-s3-2026-10-1', 'index.html',
-  'archive/v1/demo.html', 'archive/v1/dashboard.html', 'archive/v1/proverka.html', 'archive/v1/teacher.html'];
+  'archive/v1/demo.html', 'archive/v1/dashboard.html', 'archive/v1/proverka.html', 'archive/v1/teacher.html',
+  '1english/index.html', '1english/dashboard.html?demo=1', '1english/teacher.html?demo=1', '1english/confirm.html?demo=1'];
 for (const w of [390, 1280]) {
   const c = await browser.newContext({ viewport: { width: w, height: w === 390 ? 844 : 900 } });
   const p = await c.newPage();

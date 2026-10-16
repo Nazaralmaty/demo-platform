@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#F5F4F0">
+<meta name="robots" content="noindex">
+<!-- Тестовая копия ветки 1english-platform в demo-platform: всегда на тестовых данных, к базе 1English не ходит. -->
+<script>if(!/[?&]demo=/.test(location.search))location.replace(location.pathname+'?demo=1');</script>
+<title>1English · сабақтарды растау</title>
+<link rel="icon" href="assets/logo.png">
+<link rel="stylesheet" href="app/style.css">
+<link rel="stylesheet" href="app/eco-1english.css">
+<link rel="stylesheet" href="app/eco.css">
+</head>
+<body class="eco">
+<main class="c-wrap" id="root"></main>
+
+<script src="app/db.js"></script>
+<script src="app/control.js"></script>
+<script src="app/confirm_ui.js"></script>
+<script>
+/* Экран клиента: родитель открывает ссылку из WhatsApp и за минуту
+   отмечает, были ли уроки за две недели. Без входа — ключ в самой ссылке
+   (?t=…), его проверяет функция в базе en_confirm_get / en_confirm_answer.
+   confirm.html?demo=1 — тот же экран на выдуманных уроках, без базы. */
+(function () {
+  'use strict';
+  var C = CTRL;
+  var token = decodeURIComponent((/[?&]t=([^&]+)/.exec(location.search) || [])[1] || '');
+  var demo = /[?&]demo=/.test(location.search);
+
+  var adapter = {
+    load: function (tk) {
+      if (!tk) return Promise.resolve(null);
+      return DB.anonRpc('en_confirm_get', { p_token: tk }).then(function (d) {
+        if (!d) return null;
+        d.school = '1English';
+        /* период — из запроса: обычно половина месяца, но конец берём как есть */
+        var to = d.period.to;
+        d.period = C.period(d.period.from);
+        d.period.to = to;
+        return d;
+      });
+    },
+    submit: function (tk, answers, note) {
+      var list = Object.keys(answers).map(function (id) {
+        return { id: id, answer: answers[id].answer, quality: answers[id].quality || null };
+      });
+      return DB.anonRpc('en_confirm_answer', { p_token: tk, p_answers: list, p_note: note || null });
+    }
+  };
+
+  if (demo) {
+    var today = C.day(new Date()), p = C.lastClosed(today);
+    var days = C.plannedDates({ days: 'mon,wed,fri' }, p);
+    var topics = ['Present Simple', 'Артикли', 'Числа и время', 'Мой день', 'Семья', 'Еда', 'Город'];
+    var data = { school: '1English', student: 'Аяжан', teacher: 'Айгерім Нұрлан', period: p, answered_at: null,
+                 lessons: days.map(function (d, i) {
+                   return { id: 'd' + i, date: d, topic: topics[i % topics.length], taught: i !== 2 };
+                 }) };
+    token = 'demo';
+    adapter = {
+      load: function () { return Promise.resolve(JSON.parse(JSON.stringify(data))); },
+      submit: function () { return Promise.resolve('ok'); }
+    };
+  }
+
+  CONFIRM.mount(document.getElementById('root'), adapter, {
+    token: token, logo: 'assets/logo.png', school: '1English', lang: 'kk'
+  });
+})();
+</script>
+</body>
+</html>

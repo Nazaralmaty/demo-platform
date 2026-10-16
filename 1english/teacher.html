@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#F5F4F0">
+<!-- Тестовая копия ветки 1english-platform в demo-platform: всегда на тестовых данных, к базе 1English не ходит. -->
+<script>if(!/[?&]demo=/.test(location.search))location.replace(location.pathname+'?demo=1');</script>
+<title>1English · кабинет учителя</title>
+<link rel="icon" href="assets/logo.png">
+<link rel="stylesheet" href="app/style.css">
+<link rel="stylesheet" href="app/eco-1english.css">
+<link rel="stylesheet" href="app/eco.css">
+<style>
+  /* Кабинет учителя. Четыре колонки в одну строку на ученика:
+       1 — учитель (стоит слева и не уезжает),
+       2 — ученик: кто он, зачем учится, когда занимается,
+       3 — главное: уроки по месяцам обучения, галочка, тема, домашка,
+       4 — результат: сколько процентов уроков проведено.
+     На телефоне колонки складываются в стопку, третья едет вбок внутри
+     своей рамки — страница при этом стоит на месте.
+
+     ВАЖНО про имена классов: здесь живёт app/style.css учеников, где уже
+     заняты .bar, .panel, .row, .card. Поэтому всё своё — с приставкой t-. */
+  body{background:var(--bg)}
+  .cab{max-width:1680px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) 16px 80px}
+
+  .t-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+  .t-top h1{font-size:24px;letter-spacing:-.03em;flex:1;min-width:180px}
+  .t-top select{background:var(--card);border:0;border-radius:12px;padding:10px 14px;font:inherit;
+                font-size:14px;color:var(--ink);box-shadow:var(--sh-1)}
+  .t-tabs{display:flex;gap:6px;background:var(--card);border-radius:999px;padding:4px;box-shadow:var(--sh-1)}
+  .t-tabs button{border:0;background:transparent;border-radius:999px;padding:9px 16px;font:inherit;
+                 font-size:14px;font-weight:700;color:var(--muted);cursor:pointer}
+  .t-tabs button.on{background:var(--navy);color:var(--on-navy)}
+
+  /* ── сетка: рельса учителя + доска ────────────────────────────────── */
+  .t-grid{display:grid;grid-template-columns:1fr;gap:16px;align-items:start}
+  @media (min-width:1000px){ .t-grid{grid-template-columns:270px 1fr} }
+
+  .t-rail{background:var(--card);border-radius:var(--r-card);box-shadow:var(--sh-1);padding:20px}
+  @media (min-width:1000px){ .t-rail{position:sticky;top:16px} }
+  .t-rail .ava{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;
+               background:var(--navy);color:var(--on-navy);font-weight:800;font-size:22px;margin-bottom:12px}
+  .t-rail h2{font-size:20px;letter-spacing:-.02em}
+  .t-rail .ph{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:2px}
+  .t-bio{margin-top:12px;font-size:14px;line-height:1.5;color:var(--muted);white-space:pre-wrap}
+  .t-facts{margin-top:16px;border-top:1px solid var(--line)}
+  .t-facts div{display:flex;justify-content:space-between;gap:10px;padding:9px 0;
+               border-bottom:1px solid var(--line);font-size:13.5px}
+  .t-facts div span{color:var(--muted)}
+  .t-facts div b{font-variant-numeric:tabular-nums}
+
+  /* ── шапка колонок ────────────────────────────────────────────────── */
+  .t-heads{display:none}
+  @media (min-width:1200px){
+    .t-heads{display:grid;grid-template-columns:290px 1fr 132px;gap:14px;padding:0 18px 8px}
+    .t-heads b{font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+  }
+
+  .t-row{background:var(--card);border-radius:var(--r-card);box-shadow:var(--sh-1);
+         padding:16px 18px;margin-bottom:14px;display:grid;gap:14px;grid-template-columns:1fr}
+  @media (min-width:1200px){ .t-row{grid-template-columns:290px 1fr 132px;align-items:start} }
+  .t-row.off{opacity:.55}
+
+  /* ── колонка 2: ученик ────────────────────────────────────────────── */
+  .t-who{display:flex;align-items:center;gap:11px;margin-bottom:10px}
+  .t-who .ava{width:38px;height:38px;border-radius:50%;flex:none;display:grid;place-items:center;
+              background:var(--accent-soft);color:var(--accent);font-weight:800;font-size:15px}
+  .t-who b{font-weight:800;font-size:16px;letter-spacing:-.01em;display:block}
+  .t-who .ph{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .t-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px}
+  .t-tag{background:var(--bg);border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700;color:var(--navy)}
+  .t-tag.g{background:var(--ok-soft);color:var(--ok)}
+  .t-meta{font-size:13px;line-height:1.55;color:var(--muted)}
+  .t-meta i{font-style:normal;color:var(--ink);font-weight:600}
+  .t-acts{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+  .t-acts button{background:var(--bg);border:0;border-radius:999px;padding:7px 12px;font:inherit;
+                 font-size:12.5px;font-weight:700;color:var(--navy);cursor:pointer}
+  .t-acts button:hover{background:var(--track)}
+
+  /* круглая кнопка «?» — она же рядом с описанием ученика */
+  .t-q{width:22px;height:22px;flex:none;border:0;border-radius:50%;background:var(--bg);color:var(--navy);
+     font:inherit;font-size:12px;font-weight:800;line-height:1;cursor:pointer;padding:0}
+  .t-q:hover{background:var(--navy);color:var(--on-navy)}
+  .t-q.hw{background:var(--accent-soft);color:var(--accent);font-size:10px;width:auto;padding:0 7px;border-radius:999px}
+  .t-q.hw:hover{background:var(--accent);color:#fff}
+
+  /* ── колонка 3: месяцы и уроки ────────────────────────────────────── */
+  .t-months{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px}
+  .t-mon{flex:none;width:232px;background:var(--bg);border-radius:14px;padding:10px 10px 8px}
+  .t-mon h4{font-size:12px;font-weight:800;letter-spacing:.02em;display:flex;justify-content:space-between;
+            align-items:center;margin-bottom:8px;color:var(--muted)}
+  .t-mon h4 em{font-style:normal;color:var(--ink);font-variant-numeric:tabular-nums}
+  .t-les{display:flex;align-items:center;gap:7px;padding:5px 4px;border-radius:9px}
+  .t-les:hover{background:var(--card)}
+  .t-les input{width:17px;height:17px;flex:none;accent-color:var(--ok);cursor:pointer;margin:0}
+  .t-les input:disabled{cursor:not-allowed;opacity:.65}
+  .t-les .n{font-size:11.5px;color:var(--faint);width:15px;flex:none;font-variant-numeric:tabular-nums;text-align:right}
+  .t-les .tp{flex:1;min-width:0;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .t-les.ok .tp{color:var(--ok)}
+  /* статус урока точкой: подтверждён, ждёт клиента, вопрос */
+  .t-st{width:8px;height:8px;border-radius:50%;flex:none;background:transparent}
+  .t-st.ok{background:var(--ok)} .t-st.wait{background:var(--navy);opacity:.45}
+  .t-st.warn{background:#C8961C} .t-st.bad{background:var(--accent)} .t-st.mute{background:var(--faint)}
+  .t-res small{display:block;font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4}
+  .t-issues{margin-bottom:16px}
+  .t-issues .e-tickets{margin-top:12px}
+  .t-les .tp.empty{color:var(--faint)}
+  .t-addmon{flex:none;width:92px;border:1px dashed var(--line);background:transparent;border-radius:14px;
+            color:var(--muted);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+  .t-addmon:hover{border-color:var(--navy);color:var(--navy)}
+
+  /* ── колонка 4: результат ─────────────────────────────────────────── */
+  .t-res{text-align:center}
+  .t-ring{width:96px;height:96px;margin:0 auto;border-radius:50%;display:grid;place-items:center;
+          background:conic-gradient(var(--ok) var(--p),var(--track) 0)}
+  .t-ring i{width:74px;height:74px;border-radius:50%;background:var(--card);display:grid;place-items:center;
+            font-style:normal;font-weight:800;font-size:20px;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+  .t-res span{display:block;font-size:12.5px;color:var(--muted);margin-top:8px;font-variant-numeric:tabular-nums}
+  .t-res b{display:block;font-size:13px;margin-top:4px;font-variant-numeric:tabular-nums}
+
+  /* ── кнопки и формы ───────────────────────────────────────────────── */
+  .t-add{background:var(--navy);color:var(--on-navy);border:0;border-radius:999px;padding:12px 22px;
+         font:inherit;font-size:15px;font-weight:700;cursor:pointer}
+  .t-add:disabled{opacity:.5;cursor:default}
+  .t-empty{background:var(--card);border-radius:var(--r-card);box-shadow:var(--sh-1);
+           padding:44px 20px;text-align:center;color:var(--muted);line-height:1.55}
+
+  /* margin:auto — не украшение: сброс `*{margin:0}` в app/style.css убивает
+     авто-поля, и модальное окно прилипает к левому верхнему углу. */
+  dialog{border:0;border-radius:var(--r-card);padding:0;max-width:640px;width:calc(100% - 28px);
+         margin:auto;max-height:88vh;overflow:auto;
+         background:var(--card);color:var(--ink);box-shadow:var(--sh-2)}
+  dialog::backdrop{background:rgba(10,27,46,.45)}
+  .dlg{padding:22px}
+  .dlg h3{font-size:19px;letter-spacing:-.02em;margin-bottom:4px}
+  .dlg .sub{font-size:13.5px;color:var(--muted);margin-bottom:16px;line-height:1.5}
+  .f{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:10px}
+  .f label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px}
+  .f input,.f select,.f textarea{width:100%;background:var(--bg);border:0;border-radius:12px;padding:11px 13px;
+       font:inherit;font-size:14.5px;color:var(--ink);outline:2px solid transparent;
+       transition:outline-color .15s var(--ease)}
+  .f textarea{min-height:76px;resize:vertical;line-height:1.5}
+  .f input:focus,.f select:focus,.f textarea:focus{outline-color:var(--navy)}
+  .f.one{grid-template-columns:1fr}
+  .days{display:flex;flex-wrap:wrap;gap:6px}
+  .days label{display:inline-flex;align-items:center;gap:6px;background:var(--bg);border-radius:999px;
+              padding:8px 12px;font-size:13px;font-weight:700;color:var(--ink);cursor:pointer;margin:0}
+  .days input{width:auto;accent-color:var(--navy)}
+  .dlg-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+  .dlg-foot button{border:0;border-radius:12px;padding:11px 18px;font:inherit;font-size:14.5px;
+                   font-weight:700;cursor:pointer;background:var(--bg);color:var(--ink)}
+  .dlg-foot button.go{background:var(--navy);color:var(--on-navy)}
+  .dlg-foot button.bad{background:transparent;color:var(--accent);margin-right:auto}
+  .dlg .state{font-size:13.5px;min-height:20px;margin-top:10px}
+  .dlg .state.bad{color:var(--accent)} .dlg .state.ok{color:var(--ok)}
+  .prog{max-height:46vh;overflow:auto;margin-top:6px}
+  .prog div{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line);
+            font-size:13.5px}
+  .prog div span{color:var(--muted);font-variant-numeric:tabular-nums}
+
+  /* ── отчёты ───────────────────────────────────────────────────────── */
+  .t-wrap{background:var(--card);border-radius:var(--r-card);box-shadow:var(--sh-1);overflow:hidden;margin-bottom:16px}
+  .t-wrap h3{font-size:17px;letter-spacing:-.02em;padding:18px 20px 0}
+  .t-wrap .hint{font-size:13.5px;color:var(--muted);padding:4px 20px 12px;line-height:1.5}
+  .scrollx{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:620px}
+  th,td{text-align:left;padding:12px 20px;font-size:14px;white-space:nowrap}
+  th{font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;
+     border-bottom:1px solid var(--line)}
+  tr + tr td{border-top:1px solid var(--line)}
+  th.num,td.num{text-align:right;font-variant-numeric:tabular-nums}
+  tfoot td{font-weight:800;border-top:2px solid var(--line)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+  .kpi{background:var(--card);border-radius:var(--r-card);box-shadow:var(--sh-1);padding:18px 20px}
+  .kpi b{display:block;font-size:30px;font-weight:800;letter-spacing:-.045em;font-variant-numeric:tabular-nums}
+  .kpi span{display:block;font-size:13px;color:var(--muted);margin-top:4px}
+
+  .auth{max-width:380px;margin:8vh auto 0}
+  .err{color:var(--accent);font-size:14px;min-height:20px;margin:10px 0}
+  .banner{background:var(--accent-soft);color:var(--accent);border-radius:14px;padding:12px 16px;
+          font-size:13.5px;line-height:1.5;margin-bottom:16px}
+</style>
+</head>
+<body>
+<div class="cab" id="root"></div>
+<dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
+
+<script src="app/db.js"></script>
+<script src="app/course.js"></script>
+<script src="app/schedule.js"></script>
+<script src="app/control.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var root = document.getElementById('root');
+  var dlg  = document.getElementById('dlg');
+  var dlgBody = document.getElementById('dlgBody');
+
+  /* Состояние кабинета. teacher — чья доска открыта (админ может смотреть
+     любого), cards — карточки с вложенными уроками, me.admin решает, живая
+     галочка или нет. */
+  var S = { me: { admin: false, id: null }, teachers: [], teacher: null,
+            cards: [], view: 'board' };
+
+  var DAYS = SCHED.DAYS;
+
+  /* Ставка одного урока в 1English. Пусто в карточке ученика и у учителя —
+     значит она. */
+  var RATE = 1150;
+  var C = window.CTRL;
+  function today() { return C.day(new Date()); }
+
+  /* Урок до патча контроля (patch_2026-10-16_control.sql) знает только
+     done — галочку админа. Такой урок читается как проведённый и
+     засчитанный администратором: и экран, и правило выплаты видят его так
+     же, как база после патча. */
+  function normLesson(l, card) {
+    l.card_id = card.id;
+    return C.legacy(l);
+  }
+  function isTaught(l) { return !!(l.taught || l.done); }
+  function dateOfLesson(l) { return C.dateOf(l); }
+
+  /* Разбор по правилам контроля: статус каждого урока и вопросы, которые
+     ждут администратора. Запросов клиентам учитель не видит — поэтому
+     «клиент молчит» здесь не считается, только «ждёт клиента». */
+  function analysis() {
+    var lessons = [];
+    S.cards.forEach(function (c) { (c.lessons || []).forEach(function (l) { lessons.push(normLesson(l, c)); }); });
+    var an = C.analyze({ teachers: S.teachers, cards: S.cards, lessons: lessons, requests: [] }, today());
+    an.byId = {};
+    an.rows.forEach(function (r) { an.byId[r.l.id] = r; });
+    return an;
+  }
+
+  /* Кавычки экранируются наравне со скобками: имя ученика, город и цель
+     пишет учитель руками, а часть значений уходит внутрь атрибутов. */
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function digits(p) { return String(p == null ? '' : p).replace(/\D/g, '').slice(0, 11); }
+  function phoneFmt(p) {
+    var d = digits(p);
+    return d.length === 11
+      ? '+' + d[0] + ' (' + d.slice(1, 4) + ') ' + d.slice(4, 7) + ' ' + d.slice(7, 9) + ' ' + d.slice(9)
+      : (p || '—');
+  }
+  function initial(name) {
+    var n = String(name || '').trim();
+    return n ? n[0].toUpperCase() : '?';
+  }
+  function money(n) { return String(Math.round(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' ₸'; }
+  function dayNames(csv) {
+    var set = String(csv || '').split(',');
+    return DAYS.filter(function (d) { return set.indexOf(d[0]) >= 0; })
+               .map(function (d) { return d[1]; }).join(', ');
+  }
+  function dateRu(iso) {
+    if (!iso) return '—';
+    var d = new Date(iso);
+    return isNaN(d) ? '—' : d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  }
+
+  /* ── счёт ─────────────────────────────────────────────────────────────
+     Три величины на карточку и одна на кабинет. Знаменатель — это план:
+     месяцев × уроков в месяц. Уроки, которых в сетке нет, в него не идут,
+     иначе процент упирается в потолок из ненаписанных месяцев. */
+  function lessonsOf(card) {
+    return (card.lessons || []).slice().sort(function (a, b) {
+      return (a.month - b.month) || (a.idx - b.idx);
+    });
+  }
+  function monthsOf(card) {
+    var by = {}, all = lessonsOf(card);
+    all.forEach(function (l) { (by[l.month] = by[l.month] || []).push(l); });
+    return Object.keys(by).map(Number).sort(function (a, b) { return a - b; })
+      .map(function (m) {
+        var list = by[m];
+        return { month: m, lessons: list,
+                 done: list.filter(isTaught).length,
+                 total: list.length };
+      });
+  }
+  /* done в ответе — проведённые учителем уроки (процент от плана), money —
+     только то, что уже к выплате: подтверждено клиентом или админом.
+     Остальное лежит в wait (ждёт клиента) и review (вопрос у админа). */
+  function statOf(card) {
+    var all = lessonsOf(card);
+    all.forEach(function (l) { normLesson(l, card); });
+    var done = all.filter(isTaught).length;
+    var rate = card.rate == null ? ((S.teacher && S.teacher.rate) || RATE) : card.rate;
+    var last = null, paid = 0, wait = 0, review = 0;
+    all.forEach(function (l) {
+      var d = l.taught_on || l.done_at;
+      if (isTaught(l) && d && (!last || d > last)) last = d;
+      var st = C.status(l);
+      if (C.BUCKET[st] === 'payable') paid++;
+      else if (st === 'awaiting') wait++;
+      else if (C.BUCKET[st] === 'review') review++;
+    });
+    return { done: done, total: all.length,
+             pct: all.length ? Math.round(done / all.length * 100) : 0,
+             rate: rate, money: paid * rate, wait: wait * rate, review: review * rate, last: last };
+  }
+  /* Зарплата считается по календарному месяцу, когда прошёл урок, а не по
+     месяцу обучения: платят за отработанное в августе, а не за «третий
+     месяц Аяжан». И только за то, что подтвердил клиент или админ. */
+  function salaryByMonth(cards) {
+    var by = {};
+    cards.forEach(function (c) {
+      var rate = c.rate == null ? ((S.teacher && S.teacher.rate) || RATE) : c.rate;
+      lessonsOf(c).forEach(function (l) {
+        if (!C.payable(normLesson(l, c))) return;
+        /* месяц — когда прошёл урок; у старых галочек дня урока нет, берём день галочки */
+        var day = l.taught_on || l.plan_date || l.done_at;
+        var key = day ? String(day).slice(0, 7) : 'без даты';
+        var row = by[key] || (by[key] = { key: key, lessons: 0, sum: 0 });
+        row.lessons++; row.sum += rate;
+      });
+    });
+    return Object.keys(by).sort().reverse().map(function (k) { return by[k]; });
+  }
+  function monthRu(key) {
+    if (!/^\d{4}-\d{2}$/.test(key)) return key;
+    var names = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль',
+                 'Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+    return names[Number(key.slice(5, 7)) - 1] + ' ' + key.slice(0, 4);
+  }
+
+  /* ── вход ─────────────────────────────────────────────────────────── */
+  function auth(message) {
+    root.innerHTML =
+      '<div class="auth">' +
+        '<h1 style="margin-bottom:8px">Кабинет учителя</h1>' +
+        '<p class="sub" style="margin-bottom:22px">Вход тем же номером и кодом, что и в платформу. ' +
+          'Кабинет открывается аккаунту из таблицы en_teachers.</p>' +
+        '<input class="field" id="ph" type="tel" inputmode="numeric" value="+7">' +
+        '<div class="gap-sm"></div>' +
+        '<input class="field" id="cd" type="tel" inputmode="numeric" maxlength="6" placeholder="000000">' +
+        '<p class="err" id="err">' + esc(message || '') + '</p>' +
+        '<button class="btn" id="go">Войти</button>' +
+      '</div>';
+    root.querySelector('#go').onclick = function () {
+      var btn = this, err = root.querySelector('#err');
+      btn.disabled = true; btn.textContent = 'Секунду…'; err.textContent = '';
+      DB.enter(root.querySelector('#ph').value, root.querySelector('#cd').value)
+        .then(load)
+        .catch(function (e) {
+          btn.disabled = false; btn.textContent = 'Войти'; err.textContent = e.message;
+        });
+    };
+  }
+
+  /* ── данные ───────────────────────────────────────────────────────── */
+  function load() {
+    return Promise.all([
+      DB.rest('en_teachers?select=*&order=created_at'),
+      DB.rest('en_admins?select=id').catch(function () { return []; })
+    ]).then(function (r) {
+      S.teachers = r[0] || [];
+      S.me.admin = (r[1] || []).length > 0;
+      S.me.id = DB.userId;
+      if (!S.teachers.length) {
+        return noTeacher();
+      }
+      /* Учителю RLS отдаёт одну строку — свою. Админу все: он выбирает,
+         чей кабинет смотреть, и ему же принадлежат галочки. */
+      if (!S.teacher || !S.teachers.filter(function (t) { return t.id === S.teacher.id; })[0]) {
+        S.teacher = S.teachers.filter(function (t) { return t.id === S.me.id; })[0] || S.teachers[0];
+      }
+      return cards();
+    }).catch(function (e) {
+      if (/войти|token|JWT/i.test(e.message || '')) return auth('');
+      /* Частый случай — схема ещё не применена. Сырой ответ PostgREST
+         («relation public.en_teachers does not exist») читается как
+         «всё сломалось», хотя нужен один запуск файла патча. */
+      var noSchema = /does not exist|schema cache|relation/i.test(e.message || '');
+      root.innerHTML = '<div class="t-empty">' +
+        (noSchema
+          ? 'В базе ещё нет таблиц кабинета.<br><br>Supabase → SQL Editor → вставить целиком ' +
+            '<b>backend/patch_2026-09-20_teacher.sql</b> → Run.<br>' +
+            'Запускать можно повторно, ничего не сломается.'
+          : esc(e.message)) +
+        '<br><br><button class="t-add" id="out">Выйти</button></div>';
+      var b = root.querySelector('#out');
+      if (b) b.onclick = function () { DB.signOut(); auth(''); };
+    });
+  }
+  function cards() {
+    return DB.rest('en_teacher_students?select=*,lessons:en_teacher_lessons(*)' +
+                   '&teacher_id=eq.' + encodeURIComponent(S.teacher.id) +
+                   '&order=archived,created_at')
+      .then(function (rows) { S.cards = rows || []; render(); });
+  }
+  function noTeacher() {
+    root.innerHTML =
+      '<div class="t-empty">Этот номер ещё не учитель.<br><br>' +
+      'Supabase → SQL Editor:<br><b>select public.en_make_teacher(\'ваш номер\', \'Имя\', \'Резюме\', 4000);</b>' +
+      '<br><br>Аккаунт при этом должен уже существовать — его заводит форма «Новый ученик» в дашборде.' +
+      '<br><br><button class="t-add" id="out" style="margin-top:14px">Выйти</button></div>';
+    var b = root.querySelector('#out');
+    if (b) b.onclick = function () { DB.signOut(); auth(''); };
+  }
+
+  /* ── экран ────────────────────────────────────────────────────────── */
+  function render() {
+    var mine = S.teacher || {};
+    var live = S.cards.filter(function (c) { return !c.archived; });
+    var totals = live.reduce(function (a, c) {
+      var s = statOf(c); a.done += s.done; a.total += s.total; a.money += s.money;
+      a.wait += s.wait; a.review += s.review; return a;
+    }, { done: 0, total: 0, money: 0, wait: 0, review: 0 });
+    S.an = analysis();
+
+    root.innerHTML =
+      '<div class="t-top">' +
+        '<h1>Кабинет учителя</h1>' +
+        (S.me.admin && S.teachers.length > 1
+          ? '<select id="pick">' + S.teachers.map(function (t) {
+              return '<option value="' + esc(t.id) + '"' + (t.id === mine.id ? ' selected' : '') + '>' +
+                     esc(t.name || phoneFmt(t.phone)) + '</option>';
+            }).join('') + '</select>'
+          : '') +
+        '<div class="t-tabs">' +
+          '<button data-view="board"' + (S.view === 'board' ? ' class="on"' : '') + '>Доска</button>' +
+          '<button data-view="week"' + (S.view === 'week' ? ' class="on"' : '') + '>График</button>' +
+          '<button data-view="report"' + (S.view === 'report' ? ' class="on"' : '') + '>Отчёты</button>' +
+        '</div>' +
+        '<button class="t-add" id="out" style="background:var(--bg);color:var(--ink)">Выйти</button>' +
+      '</div>' +
+
+      (S.me.admin
+        ? ''
+        : '<div class="banner">Учеников и их карточки заводит администратор в дашборде. ' +
+          'Ваше — отметить проведённый урок галочкой в сетке и вести темы и домашку: кнопки «?» и «ДЗ», ' +
+          'готовый урок — «Взять из курса». Раз в две недели клиент подтверждает уроки по ссылке: ' +
+          'подтверждённые уходят в зарплату сами, спорные решает администратор.</div>') +
+
+      '<div class="t-grid">' +
+
+        /* ── колонка 1 ── */
+        '<div class="t-rail">' +
+          '<div class="ava">' + esc(initial(mine.name)) + '</div>' +
+          '<h2>' + esc(mine.name || 'Без имени') + '</h2>' +
+          '<div class="ph">' + esc(phoneFmt(mine.phone)) + '</div>' +
+          '<div class="t-bio">' + esc(mine.bio || 'Резюме не заполнено.') + '</div>' +
+          '<div class="t-facts">' +
+            '<div><span>Учеников</span><b>' + live.length + '</b></div>' +
+            '<div><span>Уроков проведено</span><b>' + totals.done + ' из ' + totals.total + '</b></div>' +
+            '<div><span>Ставка за урок</span><b>' + money(mine.rate || RATE) + '</b></div>' +
+            '<div><span>К выплате, подтверждено</span><b>' + money(totals.money) + '</b></div>' +
+            (totals.wait ? '<div><span>Ждёт клиента</span><b>' + money(totals.wait) + '</b></div>' : '') +
+            (totals.review ? '<div><span>На проверке</span><b style="color:var(--accent)">' + money(totals.review) + '</b></div>' : '') +
+          '</div>' +
+          '<div class="t-acts"><button data-bio="1">Править резюме</button></div>' +
+        '</div>' +
+
+        '<div>' + (S.view === 'board' ? issues() + board()
+                 : S.view === 'week'  ? week(mine, live)
+                 : report(live)) + '</div>' +
+      '</div>';
+
+    var pick = root.querySelector('#pick');
+    if (pick) pick.onchange = function () {
+      S.teacher = S.teachers.filter(function (t) { return t.id === pick.value; })[0];
+      cards();
+    };
+    root.querySelector('#out').onclick = function () { DB.signOut(); auth(''); };
+    each('[data-view]', function (b) {
+      b.onclick = function () { S.view = b.getAttribute('data-view'); render(); };
+    });
+    each('[data-bio]', function (b) { b.onclick = bioForm; });
+    each('[data-card]', function (b) { b.onclick = function () { cardForm(byId(b.getAttribute('data-card'))); }; });
+    each('[data-prog]', function (b) { b.onclick = function () { progress(b.getAttribute('data-prog')); }; });
+    each('[data-mon]', function (b) { b.onclick = function () { addMonth(byId(b.getAttribute('data-mon'))); }; });
+    each('[data-les]', function (b) {
+      b.onclick = function () { lessonForm(b.getAttribute('data-les'), b.getAttribute('data-focus')); };
+    });
+    each('[data-check]', function (b) {
+      b.onchange = function () { check(b.getAttribute('data-check'), b.checked, b); };
+    });
+  }
+  function each(sel, fn) { Array.prototype.forEach.call(root.querySelectorAll(sel), fn); }
+  function byId(id) { return S.cards.filter(function (c) { return c.id === id; })[0]; }
+
+  /* ── доска: колонки 2, 3, 4 ───────────────────────────────────────── */
+  function board() {
+    if (!S.cards.length) {
+      return '<div class="t-empty">Учеников пока нет.<br>' +
+             'Карточку заводит администратор в дашборде: кто ученик, зачем учится, ' +
+             'когда занимается и сколько уроков в месяце.</div>';
+    }
+    return '<div class="t-heads"><b>Ученик</b><b>Проведённые уроки по месяцам обучения</b>' +
+           '<b style="text-align:center">Результат</b></div>' +
+           S.cards.map(rowOf).join('');
+  }
+
+  function rowOf(c) {
+    var s = statOf(c);
+    return '<div class="t-row' + (c.archived ? ' off' : '') + '">' +
+
+      /* ── 2. ученик ── */
+      '<div>' +
+        '<div class="t-who">' +
+          '<span class="ava">' + esc(initial(c.name)) + '</span>' +
+          '<span style="min-width:0"><b>' + esc(c.name) + '</b>' +
+          '<span class="ph">' + esc(phoneFmt(c.phone)) + '</span></span>' +
+          '<button class="t-q" data-prog="' + esc(c.id) + '" title="Прогресс ученика в платформе">?</button>' +
+        '</div>' +
+        '<div class="t-tags">' +
+          (c.age ? '<span class="t-tag">' + c.age + ' лет</span>' : '') +
+          (c.city ? '<span class="t-tag">' + esc(c.city) + '</span>' : '') +
+          '<span class="t-tag' + (c.format === 'group' ? ' g' : '') + '">' +
+            (c.format === 'group' ? 'Группа' : 'Индивид') + '</span>' +
+          (c.level ? '<span class="t-tag">' + esc(c.level) + '</span>' : '') +
+        '</div>' +
+        '<div class="t-meta">' +
+          (c.goal ? 'Цель: <i>' + esc(c.goal) + '</i><br>' : '') +
+          'График: <i>' + esc(dayNames(c.days) || '—') + (c.time_at ? ', ' + esc(c.time_at) : '') + '</i><br>' +
+          'Начал: <i>' + dateRu(c.started_on) + '</i> · ставка <i>' + money(s.rate) + '</i>' +
+        '</div>' +
+        '<div class="t-acts">' +
+          (S.me.admin ? '<button data-card="' + esc(c.id) + '">Править</button>' : '') +
+          '<button data-prog="' + esc(c.id) + '">Прогресс в платформе</button>' +
+        '</div>' +
+      '</div>' +
+
+      /* ── 3. уроки по месяцам ── */
+      '<div class="t-months">' +
+        monthsOf(c).map(function (m) {
+          return '<div class="t-mon"><h4>Месяц ' + m.month +
+                 '<em>' + m.done + '/' + m.total + '</em></h4>' +
+                 m.lessons.map(lesRow).join('') + '</div>';
+        }).join('') +
+        (S.me.admin ? '<button class="t-addmon" data-mon="' + esc(c.id) + '">+ месяц</button>' : '') +
+      '</div>' +
+
+      /* ── 4. результат ── */
+      '<div class="t-res">' +
+        '<div class="t-ring" style="--p:' + s.pct + '%"><i>' + s.pct + '%</i></div>' +
+        '<span>' + s.done + ' из ' + s.total + ' уроков</span>' +
+        '<b>' + money(s.money) + '</b>' +
+        (s.wait || s.review ? '<small>' + (s.wait ? 'ждёт клиента ' + money(s.wait) : '') +
+          (s.wait && s.review ? '<br>' : '') + (s.review ? 'на проверке ' + money(s.review) : '') + '</small>' : '') +
+      '</div>' +
+    '</div>';
+  }
+
+  /* Строка урока: галочка, номер, точка статуса, тема и две кнопки «?» —
+     на тему и на домашнее задание. Полный текст открывается в окне.
+
+     Галочка у двоих своя. Учитель отмечает «урок проведён» — это заявка;
+     как только клиент ответил или админ решил, она под замком. Админ
+     ставит «засчитать к выплате» — решение, которое сильнее ответа. */
+  function lesRow(l) {
+    var row = S.an && S.an.byId[l.id], st = row ? row.status : C.status(l);
+    var tone = (C.STATUS[st] || {}).tone;
+    var day = dateOfLesson(l), future = !!day && day > today();
+    var locked = !!(l.client_answer || l.review);
+    var checked = S.me.admin ? !!l.done : isTaught(l);
+    var off = !S.me.admin && (locked || (!isTaught(l) && future));
+    var title = S.me.admin ? (l.done ? 'Засчитан к выплате — снять' : 'Засчитать к выплате')
+      : locked ? 'Клиент ответил — отметка закрыта'
+      : future ? 'Урок ещё не наступил'
+      : isTaught(l) ? 'Снять отметку' : 'Урок проведён';
+    return '<div class="t-les' + (l.done ? ' ok' : '') + '">' +
+      '<input type="checkbox" data-check="' + esc(l.id) + '"' +
+        (checked ? ' checked' : '') + (off ? ' disabled' : '') + ' title="' + title + '">' +
+      '<span class="n">' + l.idx + '</span>' +
+      '<i class="t-st ' + (st === 'planned' ? '' : tone) + '" title="' + esc((C.STATUS[st] || {}).ru || '') + '"></i>' +
+      '<span class="tp' + (l.topic ? '' : ' empty') + '">' + esc(l.topic || 'тема не задана') + '</span>' +
+      '<button class="t-q" data-les="' + esc(l.id) + '" data-focus="topic" title="Описание урока">?</button>' +
+      '<button class="t-q hw" data-les="' + esc(l.id) + '" data-focus="homework" title="Домашнее задание">ДЗ</button>' +
+    '</div>';
+  }
+
+  /* ── график ──────────────────────────────────────────────────────────
+     Та же сетка, что у админа в дашборде, только смотреть: рабочие часы и
+     запись учеников ведёт администратор. */
+  function week(t, live) {
+    return '<div class="t-wrap" style="padding:20px">' +
+        '<h3 style="padding:0">Неделя</h3>' +
+        '<div class="hint" style="padding:4px 0 14px">Синее — занято, зелёное — свободно. ' +
+          'Рабочие часы и запись учеников ведёт администратор.</div>' +
+        SCHED.grid(t, live, false) +
+      '</div>';
+  }
+
+  /* ── отчёты ───────────────────────────────────────────────────────── */
+  function report(live) {
+    var sal = salaryByMonth(live);
+    var totalSum = sal.reduce(function (a, r) { return a + r.sum; }, 0);
+    var totalLes = sal.reduce(function (a, r) { return a + r.lessons; }, 0);
+    var thisMonth = new Date().toISOString().slice(0, 7);
+    var now = sal.filter(function (r) { return r.key === thisMonth; })[0] || { lessons: 0, sum: 0 };
+
+    return '<div class="kpis">' +
+        '<div class="kpi"><b>' + now.lessons + '</b><span>уроков в этом месяце</span></div>' +
+        '<div class="kpi"><b>' + money(now.sum) + '</b><span>за этот месяц</span></div>' +
+        '<div class="kpi"><b>' + totalLes + '</b><span>уроков всего</span></div>' +
+        '<div class="kpi"><b>' + money(totalSum) + '</b><span>заработано всего</span></div>' +
+      '</div>' +
+
+      '<div class="t-wrap"><h3>По ученикам</h3>' +
+        '<div class="hint">Проведено — отметки учителя. План — месяцы обучения × уроков в месяце. ' +
+          'Начислено — только подтверждённое клиентом или администратором.</div>' +
+        '<div class="scrollx"><table><thead><tr>' +
+          '<th>Ученик</th><th>Формат</th><th>График</th>' +
+          '<th class="num">Проведено</th><th class="num">План</th><th class="num">%</th>' +
+          '<th>Последний урок</th><th class="num">Начислено</th>' +
+        '</tr></thead><tbody>' +
+        (live.length ? live.map(function (c) {
+          var s = statOf(c);
+          return '<tr><td>' + esc(c.name) + '</td>' +
+            '<td>' + (c.format === 'group' ? 'Группа' : 'Индивид') + '</td>' +
+            '<td>' + esc(dayNames(c.days) || '—') + (c.time_at ? ', ' + esc(c.time_at) : '') + '</td>' +
+            '<td class="num">' + s.done + '</td><td class="num">' + s.total + '</td>' +
+            '<td class="num">' + s.pct + '%</td>' +
+            '<td>' + dateRu(s.last) + '</td>' +
+            '<td class="num">' + money(s.money) + '</td></tr>';
+        }).join('') : '<tr><td colspan="8">Учеников нет</td></tr>') +
+        '</tbody></table></div></div>' +
+
+      '<div class="t-wrap"><h3>Зарплата по месяцам</h3>' +
+        '<div class="hint">Месяц — тот, в котором прошёл урок. К выплате — уроки, подтверждённые клиентом ' +
+          'или администратором. Ставка — из карточки ученика, а если её там нет — из карточки учителя.</div>' +
+        '<div class="scrollx"><table><thead><tr>' +
+          '<th>Месяц</th><th class="num">Уроков</th><th class="num">К выплате</th>' +
+        '</tr></thead><tbody>' +
+        (sal.length ? sal.map(function (r) {
+          return '<tr><td>' + esc(monthRu(r.key)) + '</td>' +
+                 '<td class="num">' + r.lessons + '</td>' +
+                 '<td class="num">' + money(r.sum) + '</td></tr>';
+        }).join('') : '<tr><td colspan="3">Проведённых уроков пока нет</td></tr>') +
+        '</tbody><tfoot><tr><td>Всего</td><td class="num">' + totalLes + '</td>' +
+        '<td class="num">' + money(totalSum) + '</td></tr></tfoot></table></div></div>';
+  }
+
+  /* ── окна ─────────────────────────────────────────────────────────── */
+  function open(html) { dlgBody.innerHTML = html; dlg.showModal(); }
+  function close() { dlg.close(); }
+  function say(text, bad) {
+    var st = dlgBody.querySelector('.state');
+    if (st) { st.className = 'state ' + (bad ? 'bad' : 'ok'); st.textContent = text; }
+  }
+  function val(id) { var el = dlgBody.querySelector('#' + id); return el ? el.value.trim() : ''; }
+
+  /* Резюме учителя */
+  function bioForm() {
+    var t = S.teacher;
+    open('<h3>Учитель</h3><div class="sub">Имя и резюме видит администратор и вы. Ставка — ₸ за проведённый урок.</div>' +
+      '<div class="f"><div><label>Имя</label><input id="tn" value="' + esc(t.name || '') + '"></div>' +
+      /* ставку меняет только админ: в базе её от учителя бережёт триггер */
+      (S.me.admin ? '<div><label>Ставка, ₸ за урок</label><input id="tr" type="number" min="0" value="' + (t.rate || 0) + '"></div>' : '') +
+      '</div>' +
+      '<div class="f one"><div><label>Резюме</label><textarea id="tb">' + esc(t.bio || '') + '</textarea></div></div>' +
+      '<div class="state"></div>' +
+      '<div class="dlg-foot"><button id="no">Отмена</button><button class="go" id="ok">Сохранить</button></div>');
+    dlgBody.querySelector('#no').onclick = close;
+    dlgBody.querySelector('#ok').onclick = function () {
+      DB.rest('en_teachers?id=eq.' + encodeURIComponent(t.id), {
+        method: 'PATCH', headers: { Prefer: 'return=minimal' },
+        body: S.me.admin ? { name: val('tn'), bio: val('tb'), rate: Number(val('tr')) || 0 }
+                         : { name: val('tn'), bio: val('tb') }
+      }).then(function () { close(); load(); })
+        .catch(function (e) { say(e.message, true); });
+    };
+  }
+
+  /* Карточка ученика. Заводит её администратор в дашборде — там же, где
+     аккаунт: номер, код и вся анкета рождаются одной формой. Здесь она
+     только правится, и только админом: учителю кнопка не рисуется. */
+  function cardForm(c) {
+    if (!c) return;
+    var set = String(c.days || '').split(',');
+
+    open('<h3>Карточка ученика</h3>' +
+      '<div class="sub">Сетка уроков не трогается: месяц добавляется кнопкой «+ месяц» в доске.</div>' +
+
+      '<div class="f">' +
+        '<div><label>Имя *</label><input id="cn" value="' + esc(c.name || '') + '"></div>' +
+        '<div><label>Возраст</label><input id="ca" type="number" min="3" max="99" value="' + (c.age || '') + '"></div>' +
+        '<div><label>Город</label><input id="cc" value="' + esc(c.city || '') + '"></div>' +
+        '<div><label>Телефон</label><input id="cp" type="tel" value="' + esc(c.phone || '') + '" placeholder="+7 701 …"></div>' +
+      '</div>' +
+      '<div class="f">' +
+        '<div><label>Нынешний уровень</label><input id="cl" value="' + esc(c.level || '') + '" placeholder="Beginner"></div>' +
+        '<div><label>Формат</label><select id="cf">' +
+          '<option value="individual"' + (c.format !== 'group' ? ' selected' : '') + '>Индивидуально</option>' +
+          '<option value="group"' + (c.format === 'group' ? ' selected' : '') + '>Группа</option>' +
+        '</select></div>' +
+        '<div><label>Время</label><input id="ct" type="time" value="' + esc(c.time_at || '') + '"></div>' +
+        '<div><label>Ставка, ₸ за урок</label><input id="cr" type="number" min="0" value="' +
+          (c.rate == null ? '' : c.rate) + '" placeholder="как у учителя"></div>' +
+      '</div>' +
+      '<div class="f one"><div><label>Дни недели</label><div class="days">' +
+        DAYS.map(function (d) {
+          return '<label><input type="checkbox" data-day="' + d[0] + '"' +
+                 (set.indexOf(d[0]) >= 0 ? ' checked' : '') + '>' + d[1] + '</label>';
+        }).join('') + '</div></div></div>' +
+      '<div class="f one"><div><label>Цель обучения</label><input id="cg" value="' + esc(c.goal || '') + '"></div></div>' +
+      '<div class="f one"><div><label>Описание ученика</label><textarea id="cd">' + esc(c.note || '') + '</textarea></div></div>' +
+      '<div class="f"><div><label>Начало</label><input id="cs" type="date" value="' +
+        esc(c.started_on || new Date().toISOString().slice(0, 10)) + '"></div></div>' +
+      '<div class="state"></div>' +
+      '<div class="dlg-foot">' +
+        '<button class="bad" id="arch">' + (c.archived ? 'Вернуть в работу' : 'В архив') + '</button>' +
+        '<button id="no">Отмена</button><button class="go" id="ok">Сохранить</button></div>');
+
+    dlgBody.querySelector('#no').onclick = close;
+    dlgBody.querySelector('#arch').onclick = function () {
+      DB.rest('en_teacher_students?id=eq.' + encodeURIComponent(c.id), {
+        method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { archived: !c.archived }
+      }).then(function () { close(); cards(); }).catch(function (e) { say(e.message, true); });
+    };
+
+    dlgBody.querySelector('#ok').onclick = function () {
+      var name = val('cn');
+      if (!name) { say('Имя обязательно', true); return; }
+      var days = [];
+      Array.prototype.forEach.call(dlgBody.querySelectorAll('[data-day]'), function (i) {
+        if (i.checked) days.push(i.getAttribute('data-day'));
+      });
+      var btn = this; btn.disabled = true; say('Сохраняю…');
+      DB.rest('en_teacher_students?id=eq.' + encodeURIComponent(c.id), {
+        method: 'PATCH', headers: { Prefer: 'return=minimal' },
+        body: {
+          name: name, age: Number(val('ca')) || null, city: val('cc') || null,
+          phone: DB.normPhone(val('cp')) || digits(val('cp')) || null, level: val('cl') || null,
+          format: val('cf'), time_at: val('ct') || null, days: days.join(','),
+          goal: val('cg') || null, note: val('cd') || null,
+          rate: val('cr') === '' ? null : Number(val('cr')),
+          started_on: val('cs') || null
+        }
+      }).then(function () { close(); cards(); })
+        .catch(function (e) { btn.disabled = false; say(e.message, true); });
+    };
+  }
+
+  /* Ещё один месяц обучения той же длины */
+  function addMonth(c) {
+    var ms = monthsOf(c);
+    var next = ms.length ? ms[ms.length - 1].month + 1 : 1;
+    var per = c.per_month || (ms.length ? ms[ms.length - 1].total : 12);
+    var plan = [];
+    for (var i = 1; i <= per; i++) plan.push({ card_id: c.id, month: next, idx: i });
+    DB.rest('en_teacher_lessons', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: plan })
+      .then(function () {
+        return DB.rest('en_teacher_students?id=eq.' + encodeURIComponent(c.id), {
+          method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { months: next }
+        });
+      }).then(cards).catch(function (e) { alert(e.message); });
+  }
+
+  /* Тема и домашка одного урока */
+  function lessonForm(id, focus) {
+    var card = null, les = null;
+    S.cards.forEach(function (c) {
+      (c.lessons || []).forEach(function (l) { if (l.id === id) { card = c; les = l; } });
+    });
+    if (!les) return;
+    var st = C.STATUS[C.status(normLesson(les, card))] || {};
+    open('<h3>Месяц ' + les.month + ', урок ' + les.idx + '</h3>' +
+      '<div class="sub">' + esc(card.name) + ' · ' +
+        (isTaught(les) ? 'проведён ' + dateRu(les.taught_on || les.done_at) : 'ещё не проведён') +
+        (st.ru && isTaught(les) ? ' · <b>' + esc(st.ru.toLowerCase()) + '</b>' : '') +
+        (les.client_answer === 'yes' && les.client_quality ? ', оценка клиента ' + les.client_quality + ' из 5' : '') +
+        (les.client_note ? '<br>Клиент: «' + esc(les.client_note) + '»' : '') + '</div>' +
+      /* Готовый урок курса: тема и домашка подставляются одним выбором —
+         составлять урок с нуля не нужно, а в платформе у ученика лежит
+         ровно этот урок с видео, словами и заданиями. */
+      '<div class="f one"><div><label>Взять из курса</label><select id="lc"><option value="">— готовый урок курса —</option>' +
+        ((window.COURSE || {}).levels || []).map(function (lv) {
+          return '<optgroup label="' + esc(lv.code + ' ' + lv.title) + '">' + lv.lessons.map(function (x) {
+            return '<option value="' + esc(x.id) + '">' + esc(x.n + '. ' + x.title) + '</option>';
+          }).join('') + '</optgroup>';
+        }).join('') + '</select></div></div>' +
+      '<div class="f one"><div><label>Тема урока</label>' +
+        '<textarea id="lt">' + esc(les.topic || '') + '</textarea></div></div>' +
+      '<div class="f one"><div><label>Домашнее задание</label>' +
+        '<textarea id="lh" style="min-height:120px">' + esc(les.homework || '') + '</textarea></div></div>' +
+      '<div class="f"><div><label>Дата занятия</label>' +
+        '<input id="ld" type="date" value="' + esc(les.plan_date || '') + '"></div></div>' +
+      '<div class="state"></div>' +
+      '<div class="dlg-foot"><button id="no">Закрыть</button>' +
+        '<button class="go" id="ok">Сохранить</button></div>');
+    var f = dlgBody.querySelector(focus === 'homework' ? '#lh' : '#lt');
+    if (f) f.focus();
+    dlgBody.querySelector('#lc').onchange = function () {
+      var c = fromCourse(this.value);
+      if (!c) return;
+      dlgBody.querySelector('#lt').value = c.topic;
+      dlgBody.querySelector('#lh').value = c.homework;
+    };
+    dlgBody.querySelector('#no').onclick = close;
+    dlgBody.querySelector('#ok').onclick = function () {
+      DB.rest('en_teacher_lessons?id=eq.' + encodeURIComponent(id), {
+        method: 'PATCH', headers: { Prefer: 'return=minimal' },
+        body: { topic: val('lt') || null, homework: val('lh') || null, plan_date: val('ld') || null }
+      }).then(function () { close(); cards(); })
+        .catch(function (e) { say(e.message, true); });
+    };
+  }
+
+  /* Урок курса → тема и домашка для журнала. */
+  function fromCourse(id) {
+    var lv = null, L = null;
+    ((window.COURSE || {}).levels || []).forEach(function (x) {
+      x.lessons.forEach(function (y) { if (y.id === id) { lv = x; L = y; } });
+    });
+    if (!L) return null;
+    var words = (L.words || []).map(function (w) { return w.en; });
+    return {
+      topic: lv.title + ', урок ' + L.n + ' · ' + L.title + (L.subtitle ? ' — ' + L.subtitle : ''),
+      homework: 'В платформе: ' + lv.title + ', урок ' + L.n + ' «' + L.title + '» — видео с правилом, ' +
+        words.length + ' слов' + (words.length ? ' (' + words.slice(0, 8).join(', ') + ')' : '') +
+        ', задания (' + (L.tasks || []).length + ') и чтение. Слова повторить флип-картами.'
+    };
+  }
+
+  /* Галочка. Ходит через функцию в базе: колонка done из браузера закрыта,
+     и функция сама проверяет, что зовёт админ. Не прошло — возвращаем
+     галочку обратно, чтобы на экране не осталось вранья. */
+  function check(id, want, box) {
+    box.disabled = true;
+    var call = S.me.admin
+      ? DB.rpc('en_lesson_check', { p_id: id, p_done: want })
+      : DB.rpc('en_lesson_taught', { p_id: id, p_taught: want });
+    call.then(function (answer) {
+      if (String(answer) !== 'Готово') { box.checked = !want; alert(answer); }
+      return cards();
+    }).catch(function (e) {
+      box.checked = !want; box.disabled = false;
+      alert(/en_lesson_taught|schema cache/i.test(e.message || '')
+        ? 'В базе ещё нет контроля уроков: Supabase → SQL Editor → backend/patch_2026-10-16_control.sql → Run.'
+        : e.message);
+    });
+  }
+
+  /* Вопросы по урокам этого учителя — то же, что видит админ в очереди.
+     Учитель знает, что именно спросит администратор, ещё до звонка. */
+  var ISSUE = {
+    dispute: 'Клиент ответил, что урока не было. Администратор свяжется с вами.',
+    suspect: 'Отметку клиент не подтверждал, и она не по графику. Администратор уточнит.',
+    ghost:   'Клиент подтвердил урок, а отметки нет. Если урок был — отметьте его или скажите администратору.',
+    unsure:  'Клиент не уверен, был ли урок. Администратор уточнит у него.',
+    lowq:    'Клиент поставил низкую оценку.',
+    silent:  'Клиент пока не ответил.'
+  };
+  function issues() {
+    var tk = (S.an ? S.an.tickets : []).filter(function (t) { return !t.card.archived; });
+    if (!tk.length) return '';
+    return '<div class="t-wrap t-issues" style="padding:18px 20px"><h3 style="padding:0">Вопросы по урокам</h3>' +
+      '<div class="hint" style="padding:4px 0 0">Эти уроки пока не в выплате. Решает администратор — вам видно то же, что и ему.</div>' +
+      '<div class="e-tickets">' + tk.map(function (t) {
+        var r = t.rows[0], st = C.STATUS[r.status] || {};
+        return '<div class="e-ticket"><div class="hd"><span class="e-chip ' + st.tone + '">' + esc(st.ru) + '</span>' +
+          '<span class="sum">' + money(t.sum) + '</span></div>' +
+          '<div class="nm"><b>' + esc(t.card.name) + '</b> ' + (r.date ? dateRu(r.date) : '') + ' · ' +
+            esc(r.l.topic || 'урок ' + r.l.idx) + '</div>' +
+          (r.l.client_note ? '<div class="e-quote">«' + esc(r.l.client_note) + '»</div>' : '') +
+          (r.flags && r.flags.length ? '<div class="e-tags">' + r.flags.map(function (f) {
+            return '<span class="e-flag">' + esc(C.FLAG[f]) + '</span>'; }).join('') + '</div>' : '') +
+          '<p>' + ISSUE[t.kind] + '</p></div>';
+      }).join('') + '</div></div>';
+  }
+
+  /* Кнопка «?» у ученика: что он делает в самой платформе. Карточка и
+     аккаунт связаны номером — совпадения может и не быть. */
+  function progress(cardId) {
+    var c = byId(cardId);
+    open('<h3>' + esc(c.name) + ' в платформе</h3><div class="sub">Загружаю…</div>' +
+         '<div class="dlg-foot"><button id="no">Закрыть</button></div>');
+    dlgBody.querySelector('#no').onclick = close;
+
+    DB.rpc('en_student_progress', { p_card: cardId }).then(function (d) {
+      d = d || {};
+      var body;
+      if (d.error) body = '<div class="sub">' + esc(d.error) + '</div>';
+      else if (!d.linked) {
+        body = '<div class="sub">Аккаунта с номером ' + esc(phoneFmt(c.phone)) +
+               ' в платформе нет. Заведите его в дашборде — и прогресс появится здесь сам.</div>';
+      } else {
+        var lessons = d.lessons || [];
+        body = '<div class="sub">Уровень: ' + esc(d.level || 'не выбран') +
+               ' · шагов пройдено: ' + (d.steps || 0) +
+               ' · последний заход ' + dateRu(d.last) + '</div>' +
+               (lessons.length
+                 ? '<div class="prog">' + lessons.map(function (l) {
+                     var name = { read: 'теория', prac: 'практика', text: 'чтение', task: 'задание', words: 'словарь' }[l.step] || l.step;
+                     var score = (l.total ? ' · ' + l.right + '/' + l.total : '');
+                     return '<div><b>' + esc(lessonTitle(l.lesson)) + '</b>' +
+                            '<span>' + esc(name) + esc(score) + ' · ' + dateRu(l.at) + '</span></div>';
+                   }).join('') + '</div>'
+                 : '<div class="sub">Шагов пока нет: вошёл, но уроки не открывал.</div>');
+      }
+      open('<h3>' + esc(c.name) + ' в платформе</h3>' + body +
+           '<div class="dlg-foot"><button id="no">Закрыть</button></div>');
+      dlgBody.querySelector('#no').onclick = close;
+    }).catch(function (e) { say(e.message, true); });
+  }
+  function lessonTitle(id) {
+    var out = id;
+    (((window.COURSE || {}).levels) || []).forEach(function (l) {
+      (l.lessons || []).forEach(function (s) { if (s.id === id) out = l.title + ' · ' + s.title; });
+    });
+    return out;
+  }
+
+  /* ── тестовый режим ───────────────────────────────────────────────
+     teacher.html?demo=1 — кабинет на выдуманных данных: ни базы, ни
+     входа. Нужен, чтобы посмотреть, как всё работает, пока патч схемы
+     не применён. ?demo=admin — тот же кабинет глазами администратора:
+     галочки живые, но живут только в памяти вкладки и пропадают с
+     обновлением страницы. Ничего никуда не уходит. */
+  function demo(asAdmin) {
+    /* Аяжан, пн-ср-пт: уроки по графику назад от сегодняшнего дня. Первые
+       двенадцать подтверждены клиентом, дальше — спор, низкая оценка,
+       два ждут клиента, остальное впереди. */
+    var topics = ['Знакомство','Глагол to be','Present Simple','Множественное число',
+                  'Артикли','Числа и время','Мой день','Семья','Еда','Город',
+                  'Past Simple','Повторение'];
+    var t0 = C.day(new Date()), dates = [], d = C.addDays(t0, -45);
+    while (dates.length < 48) { if (['mon','wed','fri'].indexOf(C.weekday(d)) >= 0) dates.push(d); d = C.addDays(d, 1); }
+    var past = dates.filter(function (x) { return x < t0; }).length;
+    var les = [];
+    for (var k = 0; k < 48; k++) {
+      var on = k < past, ans = null, q = null, note = null;
+      if (on && k < past - 4) { ans = 'yes'; q = k % 5 ? 5 : 4; }
+      if (on && k === past - 4) { ans = 'no'; note = 'В этот день урока не было, перенесли.'; }
+      if (on && k === past - 3) { ans = 'yes'; q = 2; note = 'Половину урока не работал микрофон.'; }
+      les.push({ id: 'l' + k, month: Math.floor(k / 12) + 1, idx: k % 12 + 1, topic: topics[k % 12],
+                 homework: 'Слова ' + (k % 12 * 10 + 1) + '–' + (k % 12 * 10 + 10) + ', упражнение ' + (k % 12 + 1),
+                 plan_date: dates[k], taught: on, taught_on: on ? dates[k] : null,
+                 taught_at: on ? dates[k] + 'T19:10:00+05:00' : null,
+                 client_answer: ans, client_quality: q, client_note: note, review: null });
+    }
+    les.forEach(function (l) { l.done = C.payable(l); l.done_at = l.done ? l.taught_at : null; });
+    var les2 = [];
+    for (var j = 0; j < 16; j++)
+      les2.push({ id: 'g' + j, month: Math.floor(j / 8) + 1, idx: j % 8 + 1,
+                  topic: j < 5 ? 'Разговорный клуб ' + (j + 1) : null, homework: null,
+                  plan_date: null, taught: j < 5, taught_on: j < 5 ? C.addDays(t0, -30 + j * 7) : null,
+                  client_answer: j < 5 ? 'yes' : null, client_quality: j < 5 ? 5 : null, review: null,
+                  done: j < 5, done_at: j < 5 ? C.addDays(t0, -29 + j * 7) + 'T12:00:00Z' : null });
+
+    var data = {
+      teachers: [{ id: 't1', name: 'Айгерім Нұрлан', phone: '77015550000', rate: 1150,
+                   slots: 'mon@16:00,mon@18:00,tue@16:00,tue@18:00,wed@16:00,wed@18:00,' +
+                          'thu@16:00,thu@18:00,fri@16:00,fri@18:00,sat@11:00,sat@12:00',
+                   bio: 'Десять лет в школе, пять — онлайн. Готовит к IELTS и ведёт разговорные группы для подростков.' }],
+      cards: [
+        { id: 'c1', teacher_id: 't1', name: 'Аяжан', age: 14, city: 'Алматы',
+          goal: 'Сдать IELTS на 6.5 к лету', level: 'Beginner', format: 'individual',
+          days: 'mon,wed,fri', time_at: '18:00', phone: '77011234567',
+          note: 'Стесняется говорить вслух, но письменные задания делает быстро.',
+          months: 4, per_month: 12, rate: null, started_on: '2026-05-12',
+          archived: false, lessons: les },
+        { id: 'c2', teacher_id: 't1', name: 'Ернар', age: 11, city: 'Астана',
+          goal: 'Подтянуть школьную программу', level: 'Elementary', format: 'group',
+          days: 'sat', time_at: '11:00', phone: '77029876543',
+          note: 'Приходит с братом, вдвоём работают лучше.',
+          months: 2, per_month: 8, rate: null, started_on: '2026-09-01',
+          archived: false, lessons: les2 }
+      ]
+    };
+
+    DB.userId = 't1';
+    DB.signOut = function () { location.search = ''; };
+    DB.rest = function (path, opt) {
+      if (opt && opt.method && opt.method !== 'GET') return Promise.resolve([{ id: 'c1' }]);
+      if (path.indexOf('en_teachers') === 0) return Promise.resolve(data.teachers);
+      if (path.indexOf('en_admins') === 0) return Promise.resolve(asAdmin ? [{ id: 't1' }] : []);
+      if (path.indexOf('en_teacher_students') === 0) return Promise.resolve(data.cards);
+      return Promise.resolve([]);
+    };
+    function lesson(id) {
+      var hit = null;
+      data.cards.forEach(function (c) { c.lessons.forEach(function (l) { if (l.id === id) hit = l; }); });
+      return hit;
+    }
+    DB.rpc = function (name, body) {
+      /* Те же правила, что у функций в базе: учитель не трогает отметку,
+         на которую клиент ответил, и не отмечает будущее; админ решает. */
+      if (name === 'en_lesson_check') {
+        var a = lesson(body.p_id);
+        a.review = body.p_done ? 'paid' : 'void';
+        if (body.p_done && !a.taught) { a.taught = true; a.taught_on = a.plan_date || C.day(new Date()); }
+        a.done = C.payable(a); a.done_at = a.done ? new Date().toISOString() : null;
+        return Promise.resolve('Готово');
+      }
+      if (name === 'en_lesson_taught') {
+        var l = lesson(body.p_id);
+        if (l.client_answer || l.review) return Promise.resolve('Клиент уже ответил по этому уроку — отметка закрыта');
+        if (body.p_taught && l.plan_date && l.plan_date > C.day(new Date())) return Promise.resolve('Урок ещё не наступил');
+        l.taught = !!body.p_taught; l.taught_on = l.taught ? (l.plan_date || C.day(new Date())) : null;
+        l.taught_at = l.taught ? new Date().toISOString() : null;
+        l.done = C.payable(l);
+        return Promise.resolve('Готово');
+      }
+      if (name === 'en_student_progress') {
+        return Promise.resolve({ linked: true, name: 'Аяжан', level: 'beginner',
+          last: '2026-09-19T20:00:00Z', steps: 7,
+          lessons: [{ lesson: 'b1', step: 'read', at: '2026-09-19T20:00:00Z' },
+                    { lesson: 'b1', step: 'task', right: 5, total: 6, at: '2026-09-19T20:02:00Z' },
+                    { lesson: 'b2', step: 'read', at: '2026-09-18T19:00:00Z' }] });
+      }
+      return Promise.resolve('Готово');
+    };
+    load();
+  }
+
+  var q = (typeof location === 'undefined' ? '' : location.search);
+  if (/demo=/.test(q)) demo(/demo=admin/.test(q));
+  else if (DB.init()) load();
+  else auth('');
+})();
+</script>
+</body>
+</html>

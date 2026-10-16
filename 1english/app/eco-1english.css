@@ -1,0 +1,22 @@
+/* 1English · мост токенов для общих стилей контроля (app/eco.css).
+
+   eco.css один и тот же в витрине и здесь, а палитры у школ разные. Всё,
+   чего нет в app/style.css, определено тут из цветов 1English: navy —
+   цвет действия, crimson — внимание, paper — фон. Подключать после
+   style.css и перед eco.css. */
+:root{
+  --soft:#E8EEF6; --mauve:#EFECE5; --gold:#E0B341; --gold-d:#A97C10;
+  --edge:var(--line); --chip-line:rgba(10,49,97,.32);
+  --btn:var(--navy); --btn-on:var(--on-navy); --on-accent:#FFFFFF;
+  --head:'Golos Text',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --soft:#1B2A3E; --mauve:#212C3B; --chip-line:rgba(90,155,234,.45); --on-accent:#06121F;
+  }
+}
+:root[data-theme="dark"]{
+  --soft:#1B2A3E; --mauve:#212C3B; --chip-line:rgba(90,155,234,.45); --on-accent:#06121F;
+}
+/* Заголовки 1English — без капса: плотный Golos, как на экранах ученика. */
+body.eco .e-head h1,body.eco .c-h,body.eco .h-hero h1,body.eco .h-sect,body.eco .c-top b,body.eco .e-brand b{text-transform:none}

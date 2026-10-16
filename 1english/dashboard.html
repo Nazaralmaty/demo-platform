@@ -1,0 +1,1902 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#F5F4F0">
+<!-- Тестовая копия ветки 1english-platform в demo-platform: всегда на тестовых данных, к базе 1English не ходит. -->
+<script>if(!/[?&]demo=/.test(location.search))location.replace(location.pathname+'?demo=1');</script>
+<title>1English · дашборд</title>
+<link rel="icon" href="assets/logo.png">
+<link rel="stylesheet" href="app/style.css">
+<link rel="stylesheet" href="app/eco-1english.css">
+<link rel="stylesheet" href="app/eco.css">
+<style>
+  /* Дашборд — та же таблица Supabase, просто читаемая. Смотрят с ноутбука,
+     поэтому колонка одна, но широкая; на телефоне таблица едет вбок внутри
+     своей рамки, а страница стоит на месте.
+
+     ВАЖНО про имена классов. Здесь живёт та же app/style.css, что и на
+     экранах ученика, а в ней уже заняты .bar (полоска прогресса, 6px и
+     overflow:hidden) и .panel (аккордеон урока, max-height:0). Раньше шапка
+     дашборда и обе нижние секции попадали под эти правила и обрезались.
+     Поэтому всё своё — с приставкой d-. */
+  body{background:var(--bg)}
+  .dash{max-width:1180px;margin:0 auto;padding:calc(24px + env(safe-area-inset-top)) 20px 72px}
+
+  .d-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:24px}
+  .d-head h1{font-size:26px;letter-spacing:-.03em}
+  .d-tabs{display:flex;gap:4px;background:var(--card);border-radius:999px;padding:4px;
+          box-shadow:var(--sh-1);flex:1;min-width:260px;max-width:620px;overflow-x:auto;scrollbar-width:none}
+  .d-tabs button{flex:1;border:0;background:transparent;border-radius:999px;padding:9px 14px;
+                 font:inherit;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;
+                 white-space:nowrap;transition:background .15s var(--ease),color .15s var(--ease)}
+  .d-tabs button.on{background:var(--navy);color:var(--on-navy)}
+  .d-badge{display:inline-grid;place-items:center;min-width:19px;height:19px;padding:0 5px;border-radius:999px;
+           background:var(--accent);color:#fff;font-size:11.5px;font-variant-numeric:tabular-nums;margin-left:2px}
+  /* листы графиков: по одному на учителя */
+  .sheets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .sheets button{background:var(--card);border:0;border-radius:999px;padding:11px 18px;font:inherit;
+                 font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;box-shadow:var(--sh-1)}
+  .sheets button.on{background:var(--navy);color:var(--on-navy)}
+  .sheets button span{font-weight:400;opacity:.7;font-size:12.5px;margin-left:6px}
+  .d-sub{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .d-sub h2{font-size:20px;letter-spacing:-.02em}
+  .d-sub span{font-size:13.5px;color:var(--muted)}
+  .addtime{display:flex;gap:8px;align-items:center;margin-top:16px;flex-wrap:wrap;
+           font-size:13.5px;color:var(--muted)}
+  .addtime input{background:var(--bg);border:0;border-radius:12px;padding:10px 12px;font:inherit;
+                 font-size:14.5px;color:var(--ink)}
+  .addtime button{background:var(--bg);border:0;border-radius:12px;padding:10px 16px;font:inherit;
+                  font-size:14px;font-weight:700;color:var(--navy);cursor:pointer}
+  .stu-line{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;padding-top:14px;
+            border-top:1px solid var(--line)}
+  .stu-line span{background:var(--bg);border-radius:999px;padding:7px 13px;font-size:13px;
+                 font-variant-numeric:tabular-nums}
+  .stu-line span b{font-weight:700}
+  .live{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);
+        font-variant-numeric:tabular-nums}
+  .live i{width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none;
+          animation:pulse 2.4s var(--ease) infinite}
+  .live.off i{background:var(--accent);animation:none}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:24px}
+  .kpi{background:var(--card);border-radius:var(--r-card);box-shadow:var(--sh-1);padding:18px 20px;
+       position:relative;overflow:hidden}
+  .kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--track)}
+  .kpi.hot::before{background:var(--accent)}
+  .kpi b{display:block;font-size:32px;font-weight:800;letter-spacing:-.045em;line-height:1.05;
+         font-variant-numeric:tabular-nums}
+  .kpi span{display:block;font-size:13px;color:var(--muted);margin-top:4px}
+
+  .wrap{background:var(--card);border-radius:var(--r-card);box-shadow:var(--sh-1);overflow:hidden}
+  .scrollx{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:760px}
+  th,td{text-align:left;padding:14px 18px;font-size:14.5px;white-space:nowrap;vertical-align:middle}
+  th{font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;
+     border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0;z-index:1}
+  tr + tr td{border-top:1px solid var(--line)}
+  tbody tr{transition:background .15s var(--ease)}
+  tbody tr:hover{background:var(--bg)}
+  th.num,td.num{text-align:right;font-variant-numeric:tabular-nums}
+
+  /* имя ученика: кружок с инициалом вместо пустого места слева */
+  .who{display:flex;align-items:center;gap:11px}
+  .ava{width:34px;height:34px;border-radius:50%;flex:none;display:grid;place-items:center;
+       background:var(--navy);color:var(--on-navy);font-weight:800;font-size:14px}
+  .who b{font-weight:700;display:block}
+  .who .ph{display:block;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+  .lvl{display:inline-block;padding:4px 10px;border-radius:999px;background:var(--bg);
+       font-size:12px;font-weight:700;color:var(--navy)}
+  .lvl.none{color:var(--muted)}
+  .mini{display:flex;align-items:center;gap:10px;min-width:170px}
+  .mini .track{flex:1;height:6px;border-radius:999px;background:var(--track);overflow:hidden}
+  .mini .track i{display:block;height:100%;border-radius:999px;background:var(--accent);
+                 transform-origin:left;transition:transform .4s var(--ease)}
+  .mini span{font-size:13px;font-variant-numeric:tabular-nums;color:var(--muted);width:38px;text-align:right}
+  .ago{color:var(--muted);font-variant-numeric:tabular-nums}
+  .ago.hot{color:var(--ok);font-weight:700}
+  .d-empty{padding:44px 18px;text-align:center;color:var(--muted);line-height:1.5}
+
+  /* нижние секции идут в две колонки на широком экране */
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px;margin-top:16px;
+         align-items:start}
+  .d-panel{background:var(--card);border-radius:var(--r-card);box-shadow:var(--sh-1);padding:20px}
+  .d-panel h2{font-size:18px;letter-spacing:-.02em;margin-bottom:4px}
+  .d-hint{font-size:13.5px;color:var(--muted);margin-bottom:14px;line-height:1.5}
+  .d-row{display:flex;gap:8px;flex-wrap:wrap}
+  .d-row input,.d-row select{flex:1;min-width:140px;background:var(--bg);border:0;border-radius:12px;
+              padding:12px 14px;font:inherit;font-size:15px;color:var(--ink);
+              outline:2px solid transparent;transition:outline-color .15s var(--ease)}
+  .d-row input:focus,.d-row select:focus{outline-color:var(--navy)}
+  .d-row button{background:var(--navy);color:var(--on-navy);border-radius:12px;
+               padding:12px 20px;font:inherit;font-size:15px;font-weight:700;cursor:pointer;border:0}
+  .d-row button:disabled{opacity:.5;cursor:default}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .chip2{display:inline-flex;align-items:center;gap:8px;background:var(--bg);border-radius:999px;
+         padding:8px 8px 8px 14px;font-size:14px;font-variant-numeric:tabular-nums}
+  .chip2 b{font-weight:700}
+  .chip2 span{color:var(--muted);font-size:13px}
+  .chip2 button{width:24px;height:24px;border-radius:50%;border:0;cursor:pointer;
+                background:var(--card);color:var(--accent);font:inherit;font-size:14px;line-height:1}
+  /* Развёрнутая анкета: аккаунт и карточка ученика у учителя в одной форме */
+  .d-sec{font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:.06em;
+         text-transform:uppercase;margin:20px 0 12px;padding-top:16px;border-top:1px solid var(--line)}
+  .d-form{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(152px,1fr))}
+  .d-form .one{grid-column:1/-1}
+  .d-form label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px}
+  .d-form input,.d-form select,.d-form textarea{width:100%;background:var(--bg);border:0;border-radius:12px;
+       padding:11px 13px;font:inherit;font-size:14.5px;color:var(--ink);
+       outline:2px solid transparent;transition:outline-color .15s var(--ease)}
+  .d-form textarea{min-height:76px;resize:vertical;line-height:1.5}
+  .d-form input:focus,.d-form select:focus,.d-form textarea:focus{outline-color:var(--navy)}
+  .days{display:flex;flex-wrap:wrap;gap:6px}
+  .days label{display:inline-flex;align-items:center;gap:6px;background:var(--bg);border-radius:999px;
+              padding:9px 13px;font-size:13.5px;font-weight:700;color:var(--ink);cursor:pointer;margin:0}
+  .days input{width:auto;accent-color:var(--navy)}
+  .tlist{margin-top:12px;font-size:13.5px}
+  .tlist div{display:flex;justify-content:space-between;gap:10px;padding:10px 0;
+             border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+  .tlist div b{font-weight:700}
+  .tlist div span{color:var(--muted)}
+  .state{font-size:13.5px;margin-top:12px;min-height:20px;line-height:1.45}
+  .state.ok{color:var(--ok)}
+  .state.bad{color:var(--accent)}
+  /* выданный код показываем крупно: его диктуют вслух */
+  .issued{margin-top:14px;background:var(--bg);border-radius:14px;padding:14px 16px;line-height:1.5}
+  .issued b{display:block;font-size:26px;font-weight:800;letter-spacing:.12em;
+            font-variant-numeric:tabular-nums}
+  .issued span{font-size:13px;color:var(--muted)}
+  .errs{margin-top:10px;font-size:13.5px}
+  .errs div{padding:9px 0;border-top:1px solid var(--line);color:var(--muted);line-height:1.45}
+  .errs div b{color:var(--ink);font-weight:600;display:block}
+  .mini2{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+  td .reset{background:var(--bg);border:0;border-radius:999px;padding:7px 13px;font:inherit;
+            font-size:12.5px;font-weight:700;color:var(--navy);cursor:pointer;
+            transition:background .15s var(--ease)}
+  td .reset:hover{background:var(--track)}
+  /* Правка ученика — модальное окно вне #root: страница перерисовывается
+     раз в 10 секунд, а окно при этом остаётся как было, с введённым. */
+  dialog{margin:auto;border:0;border-radius:var(--r-card);padding:0;max-width:720px;width:calc(100% - 28px);
+         max-height:calc(100dvh - 28px);overflow:auto;overscroll-behavior:contain;
+         background:var(--card);color:var(--ink);box-shadow:var(--sh-1)}
+  dialog::backdrop{background:rgba(10,27,46,.45)}
+  .dlg{padding:22px}
+  .dlg h3{font-size:19px;letter-spacing:-.02em;margin-bottom:4px}
+  .dlg-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+  .dlg-foot button{border:0;border-radius:12px;padding:11px 18px;font:inherit;font-size:14.5px;
+                   font-weight:700;cursor:pointer;background:var(--bg);color:var(--ink)}
+  .dlg-foot button.go{background:var(--navy);color:var(--on-navy)}
+  .dlg-foot button:disabled{opacity:.5;cursor:default}
+  .has-card{background:var(--bg);border-radius:14px;padding:12px 14px;font-size:14px;line-height:1.55;margin-top:8px}
+  .has-card .ed{margin-left:8px;padding:0;border:0;background:none;font:inherit;font-size:13px;font-weight:700;
+                color:var(--navy);cursor:pointer}
+  /* карточка у учителя в окне «Изменить»: своя рамка, чтобы две карточки
+     одного ученика не сливались в одну форму */
+  .cardbox{border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:10px}
+  .cb-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .cb-head b{font-size:15.5px}
+  .cb-head span{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .fit{display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.5}
+  .fit:empty{display:none}
+  .fit .clash{color:var(--accent);font-weight:700}
+  details.more{margin-top:14px}
+  details.more summary{cursor:pointer;font-size:14px;font-weight:700;color:var(--navy);padding:6px 0}
+  .has-card a{color:var(--navy);font-weight:700}
+  .tch{font-size:13.5px}
+  .tch.wait{color:var(--muted)}
+  .tch.late{color:var(--accent);font-weight:700}
+  .kpi.btnk{cursor:pointer;border:0;font:inherit;text-align:left;color:inherit}
+  .kpi.btnk.on{outline:2px solid var(--navy)}
+  .who .ed{display:inline-block;margin-top:3px;padding:0;border:0;background:none;font:inherit;
+            font-size:12.5px;font-weight:700;color:var(--navy);cursor:pointer}
+  .who .ed:hover{text-decoration:underline}
+  .auth{max-width:380px;margin:8vh auto 0}
+  .err{color:var(--accent);font-size:14px;min-height:20px;margin:10px 0}
+</style>
+</head>
+<body>
+<div class="dash" id="root"></div>
+<dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
+
+<script src="app/db.js"></script>
+<script src="app/course.js"></script>
+<script src="app/schedule.js"></script>
+<script src="app/control.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var root = document.getElementById('root');
+  var timer = null, lastData = null;
+
+  var DAYS = SCHED.DAYS;
+
+  /* Ставка одного урока в 1English. От неё считается вся зарплата: если в
+     карточке ученика и у учителя пусто, берётся она. */
+  var RATE = 1150;
+
+  var view = 'students';   /* students | new | sched | all | control */
+  var C = window.CTRL;
+  var ctlPeriod = null;    /* контроль: какой период открыт, ключ вида 2026-10-1 */
+  var ctlLang = 'kk';      /* язык сообщения клиенту: родители 1English — казахоязычные */
+  /* Ответ формы после записи: id элемента → [класс, разметка]. Страница
+     перерисовывается раз в 10 секунд, а выданный код ученику нужно ещё
+     продиктовать — поэтому ответ живёт до следующего нажатия или до
+     смены вкладки, а не до ближайшей перерисовки. */
+  var flash = {};
+  var schedTeacher = null; /* чей лист графика открыт */
+  var extraTimes = [];     /* часы, которые админ добавил в сетку руками */
+  var onlyWaiting = false; /* фильтр «Ученики»: только те, у кого нет учителя */
+  var dlg = document.getElementById('dlg'), dlgBody = document.getElementById('dlgBody');
+
+  /* Сколько часов ученик может ждать учителя. Дольше — строка красная. */
+  var WAIT_HOURS = 48;
+
+  /* Кавычки экранируются наравне со скобками: почти всё, что здесь
+     рисуется, ученик пишет сам (имя, номер), а часть значений уходит
+     внутрь атрибутов — data-reset, data-del. Без кавычек номер вида
+     77011111111" onmouseover="…  выламывается из атрибута и исполняется
+     уже под админским токеном. */
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  /* Сколько шагов у урока вообще есть: пустой урок в знаменатель не идёт,
+     иначе прогресс всегда упирается в потолок из будущих уроков. */
+  function stepsOf(lesson) {
+    var n = 0, v = window.lessonVideos(lesson.id);
+    if (v.theory || lesson.rule) n++;
+    if (v.practice) n++;
+    if (lesson.text) n++;
+    if (lesson.tasks.length) n++;
+    if (lesson.words.length) n++;
+    return n;
+  }
+  function levelCapacity(levelId) {
+    var lv = COURSE.levels.filter(function (l) { return l.id === levelId; })[0];
+    if (!lv) return 0;
+    return lv.lessons.reduce(function (n, s) { return n + stepsOf(s); }, 0);
+  }
+  /* Какому уровню принадлежит урок. Ученик может пройти Beginner и уйти на
+     Elementary — его старые строки остаются в базе. Если считать их в
+     знаменателе нового уровня, выходит 263%: проверено на замере. */
+  function levelOfLesson(lessonId) {
+    var out = null;
+    COURSE.levels.forEach(function (l) {
+      l.lessons.forEach(function (s) { if (s.id === lessonId) out = l.id; });
+    });
+    return out;
+  }
+  function lessonById(lessonId) {
+    var out = null;
+    COURSE.levels.forEach(function (l) {
+      l.lessons.forEach(function (s) { if (s.id === lessonId) out = s; });
+    });
+    return out;
+  }
+  function levelTitle(levelId) {
+    var lv = COURSE.levels.filter(function (l) { return l.id === levelId; })[0];
+    return lv ? lv.title : '—';
+  }
+
+  function ago(iso) {
+    if (!iso) return '—';
+    var m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+    if (m < 1) return 'сейчас';
+    if (m < 60) return m + ' мин назад';
+    var h = Math.floor(m / 60);
+    if (h < 24) return h + ' ч назад';
+    var d = Math.floor(h / 24);
+    return d + ' дн назад';
+  }
+  /* Номер приходит из строки ученика, а её ученик правит сам. В разметку
+     он попадает только цифрами: всё остальное отрезается здесь. */
+  function digits(p) { return String(p == null ? '' : p).replace(/\D/g, '').slice(0, 11); }
+
+  function phoneFmt(p) {
+    var d = digits(p);
+    return d.length === 11
+      ? '+' + d[0] + ' (' + d.slice(1, 4) + ') ' + d.slice(4, 7) + ' ' + d.slice(7, 9) + ' ' + d.slice(9)
+      : (p || '—');
+  }
+
+  /* «1 ученик», «2 ученика», «5 учеников»: число рядом с существительным
+     встречается в дашборде часто, а «1 учеников» читается как поломка. */
+  function plural(n, one, few, many) {
+    var a = Math.abs(n) % 100, b = a % 10;
+    if (a > 10 && a < 20) return n + ' ' + many;
+    if (b > 1 && b < 5) return n + ' ' + few;
+    if (b === 1) return n + ' ' + one;
+    return n + ' ' + many;
+  }
+
+  /* Карточки ученика у учителей. Связь — номер, а в карточке он мог
+     остаться в виде 8 701… или 701…: сравниваем нормализованный. */
+  function norm(p) { return DB.normPhone(String(p == null ? '' : p)) || digits(p); }
+  function cardsOf(st, d) {
+    var ph = norm(st.phone);
+    return (d.cards || []).filter(function (c) { return ph && norm(c.phone) === ph; });
+  }
+  function teacherName(d, id) {
+    var t = (d.teachers || []).filter(function (x) { return x.id === id; })[0];
+    return t ? (t.name || phoneFmt(t.phone)) : '—';
+  }
+  function isTeacher(d, st) {
+    return (d.teachers || []).some(function (t) { return t.id === st.id; });
+  }
+  /* Ждёт учителя: ни одной карточки с учителем, даже архивной (архив —
+     значит уже учился), и это не учитель и не сам админ. Карточка без
+     учителя — это только график: учителя ученик ещё ждёт. */
+  function waiting(st, d) {
+    return !cardsOf(st, d).some(function (c) { return c.teacher_id; }) &&
+           !isTeacher(d, st) && st.id !== DB.userId;
+  }
+  function hoursSince(iso) { return iso ? (Date.now() - new Date(iso).getTime()) / 36e5 : 0; }
+
+  function initial(name) {
+    var n = String(name || '').trim();
+    return n ? n[0].toUpperCase() : '?';
+  }
+
+  /* ── вход ─────────────────────────────────────────────────────────── */
+  function auth(message) {
+    root.innerHTML =
+      '<div class="auth">' +
+        '<h1 style="margin-bottom:8px">Дашборд</h1>' +
+        '<p class="sub" style="margin-bottom:22px">Вход тем же номером, что и в платформе. Список видит только аккаунт из таблицы en_admins.</p>' +
+        '<input class="field" id="ph" type="tel" inputmode="numeric" value="+7">' +
+        '<div class="gap-sm"></div>' +
+        '<input class="field" id="cd" type="tel" inputmode="numeric" maxlength="6" placeholder="000000">' +
+        '<p class="err" id="err">' + esc(message || '') + '</p>' +
+        '<button class="btn" id="go">Войти</button>' +
+      '</div>';
+
+    root.querySelector('#go').onclick = function () {
+      var btn = this, err = root.querySelector('#err');
+      btn.disabled = true; btn.textContent = 'Секунду…'; err.textContent = '';
+      DB.enter(root.querySelector('#ph').value, root.querySelector('#cd').value)
+        .then(start)
+        .catch(function (e) {
+          btn.disabled = false; btn.textContent = 'Войти';
+          err.textContent = e.message;
+        });
+    };
+  }
+
+  /* ── данные ───────────────────────────────────────────────────────── */
+  /* force — перерисовать, даже если курсор стоит в поле: так зовут после
+     записи. Safari не отдаёт фокус кнопке при клике, и поле, из которого
+     только что отправили форму, иначе держало бы экран старым. */
+  function pull(force) {
+    return DB.listAll().then(function (d) {
+      if (!d.isAdmin) {
+        stop();
+        DB.signOut();
+        return auth('Этот номер не админ. Дашборд открывает только таблица en_admins, en_allowed прав не даёт. Supabase → SQL Editor: select public.en_make_admin(\'ваш номер\');');
+      }
+      lastData = d;
+      if (!force && busy()) return;   /* не затирать наполовину заполненную форму */
+      render(d);
+    }).catch(function (e) {
+      var live = root.querySelector('.live');
+      if (live) { live.className = 'live off'; live.lastChild.textContent = ' ' + e.message; }
+      else auth(e.message);
+    });
+  }
+
+  /* Раз в десять секунд страница перерисовывается целиком. Пока админ
+     печатает в любой форме — обновление пропускается, иначе введённое
+     исчезает прямо из-под рук. */
+  function busy() {
+    var el = document.activeElement;
+    if (el && root.contains(el) && /^(INPUT|SELECT)$/.test(el.tagName)) return true;
+    /* «Печатает» — это значение, отличное от того, что нарисовано в
+       разметке. Без сравнения с умолчанием анкета с готовыми «4 месяца,
+       12 уроков, 18:00» считалась заполненной всегда, и страница
+       переставала обновляться совсем. */
+    var filled = false;
+    /* Выпадающий список: выбран не тот пункт, что нарисован по умолчанию.
+       Если ни один не помечен selected, по умолчанию стоит первый. */
+    Array.prototype.forEach.call(root.querySelectorAll('.d-panel select'), function (sel) {
+      var def = 0;
+      Array.prototype.forEach.call(sel.options || [], function (o, i) { if (o.defaultSelected) def = i; });
+      if (sel.options && sel.selectedIndex !== def) filled = true;
+    });
+    Array.prototype.forEach.call(root.querySelectorAll('.d-panel input,.d-panel textarea'), function (i) {
+      /* Сравниваем с умолчанием, а не с пустотой. Иначе анкета, где уже
+         нарисованы «4 месяца», «12 уроков», 18:00 и отмеченные Пн–Пт у
+         учителя, считалась заполненной всегда: страница переставала
+         обновляться, и заведённый учитель не появлялся в списке — ровно
+         тот случай, когда «нажал, и ничего не произошло». */
+      if (i.type === 'checkbox') { if (i.checked !== i.defaultChecked) filled = true; return; }
+      var def = (i.getAttribute('value') || '').trim();
+      if (i.value.trim() && i.value.trim() !== def) filled = true;
+    });
+    return filled;
+  }
+
+  function render(d) {
+    ctlCache.d = null;   /* разбор контроля — заново на каждую перерисовку: в тестовом режиме объект данных один и тот же */
+    var byStudent = {};
+    d.progress.forEach(function (r) {
+      var s = byStudent[r.student_id] || (byStudent[r.student_id] = { steps: 0, lessons: {}, last: null });
+      s.steps++;
+      (s.lessons[r.lesson] = s.lessons[r.lesson] || []).push(r.step);
+      if (!s.last || r.updated_at > s.last) s.last = r.updated_at;
+    });
+
+    var week = Date.now() - 7 * 864e5, today = new Date().toISOString().slice(0, 10);
+    var active = 0, todaySteps = 0;
+    d.progress.forEach(function (r) { if (String(r.updated_at).slice(0, 10) === today) todaySteps++; });
+
+    /* Партии в играх. Таблицы en_games может ещё не быть — тогда здесь
+       пусто, и колонка честно показывает ноль, а не прячется. */
+    var gamesAll = d.games || [], gamesWeek = 0, gamesBy = {};
+    gamesAll.forEach(function (r) {
+      gamesBy[r.student_id] = (gamesBy[r.student_id] || 0) + 1;
+      if (new Date(r.created_at).getTime() > week) gamesWeek++;
+    });
+
+    var rows = d.students.map(function (st) {
+      var p = byStudent[st.id] || { steps: 0, lessons: {}, last: null };
+      var cap = levelCapacity(st.level);
+      var last = p.last && p.last > st.updated_at ? p.last : st.updated_at;
+      if (new Date(last).getTime() > week) active++;
+
+      /* Процент и «уроков закрыто» — по текущему уровню ученика: только он
+         стоит в знаменателе. Колонка «шагов» остаётся общей: это всё, что
+         человек сделал на платформе, включая прошлые уровни. */
+      var mine = 0, done = 0;
+      Object.keys(p.lessons).forEach(function (id) {
+        if (levelOfLesson(id) !== st.level) return;
+        var lesson = lessonById(id);
+        if (!lesson) return;
+        var uniq = {};
+        p.lessons[id].forEach(function (step) { uniq[step] = true; });
+        var n = Object.keys(uniq).length;
+        mine += Math.min(n, stepsOf(lesson));
+        if (n >= stepsOf(lesson)) done++;
+      });
+      var pct = cap ? Math.min(100, Math.round(mine / cap * 100)) : 0;
+
+      return { st: st, pct: pct, steps: p.steps, done: done, last: last,
+               games: gamesBy[st.id] || 0, cards: cardsOf(st, d), wait: waiting(st, d) };
+    }).sort(function (a, b) { return (b.last || '').localeCompare(a.last || ''); });
+
+    /* Без учителя — и сколько из них ждут дольше 48 часов. */
+    var waitAll = rows.filter(function (r) { return r.wait; });
+    var waitLate = waitAll.filter(function (r) { return hoursSince(r.st.created_at) > WAIT_HOURS; }).length;
+    if (onlyWaiting) rows = waitAll.slice().sort(function (a, b) {
+      return String(a.st.created_at || '').localeCompare(String(b.st.created_at || ''));
+    });
+
+    /* Один экран и четыре кнопки вместо четырёх ссылок: ученики, заведение,
+       графики и сводная. Всё, что нужно админу, — здесь; отдельно живёт
+       только кабинет учителя. */
+    root.innerHTML =
+      '<div class="d-head">' +
+        '<h1>Дашборд</h1>' +
+        '<div class="d-tabs">' +
+          [['students','Ученики'],['new','Завести'],['sched','Графики'],['all','Сводная'],['control','Контроль']]
+            .map(function (t) {
+              var n = t[0] === 'control' ? control(d).an.tickets.length : 0;
+              return '<button data-view="' + t[0] + '"' + (view === t[0] ? ' class="on"' : '') +
+                     '>' + t[1] + (n ? ' <span class="d-badge">' + n + '</span>' : '') + '</button>';
+            }).join('') +
+        '</div>' +
+        '<span class="live"><i></i><span>обновлено ' +
+          new Date().toLocaleTimeString('ru-RU') + '</span></span>' +
+        '<button class="btn quiet" id="out" style="width:auto;padding:10px 18px;font-size:14px">Выйти</button>' +
+      '</div>' +
+
+      (view === 'students'
+        ? (
+      '<div class="cards">' +
+        '<div class="kpi"><b>' + d.students.length + '</b><span>учеников всего</span></div>' +
+        '<div class="kpi"><b>' + active + '</b><span>заходили за 7 дней</span></div>' +
+        '<div class="kpi"><b>' + d.progress.length + '</b><span>шагов пройдено</span></div>' +
+        '<div class="kpi' + (todaySteps ? ' hot' : '') + '"><b>' + todaySteps + '</b><span>шагов сегодня</span></div>' +
+        '<div class="kpi"><b>' + gamesWeek + '</b><span>партий в играх за 7 дней</span></div>' +
+        '<button class="kpi btnk' + (waitLate ? ' hot' : '') + (onlyWaiting ? ' on' : '') + '" id="waitF">' +
+          '<b>' + waitAll.length + '</b><span>без учителя' +
+          (waitLate ? ', ' + plural(waitLate, 'ждёт', 'ждут', 'ждут') + ' дольше ' + WAIT_HOURS + ' ч' : '') +
+          (onlyWaiting ? ' · показать всех' : ' · показать') + '</span></button>' +
+      '</div>' +
+
+      '<div class="wrap"><div class="scrollx">' +
+        (rows.length
+          ? '<table><thead><tr>' +
+              '<th>Ученик</th><th>Учитель</th><th>Уровень</th><th>Прогресс</th>' +
+              '<th class="num">Уроков закрыто</th><th class="num">Шагов</th><th class="num">Игр</th>' +
+              '<th>Последний заход</th><th></th>' +
+            '</tr></thead><tbody>' +
+            rows.map(function (r) {
+              var hot = Date.now() - new Date(r.last).getTime() < 864e5;
+              return '<tr>' +
+                '<td><span class="who"><span class="ava">' + esc(initial(r.st.name)) + '</span>' +
+                    '<span><b>' + esc(r.st.name || 'Без имени') + '</b>' +
+                    '<span class="ph">' + esc(phoneFmt(r.st.phone)) + '</span>' +
+                    '<button class="ed" data-edit="' + esc(r.st.id) + '">Изменить</button></span></span></td>' +
+                '<td>' + teacherCell(r, d) + '</td>' +
+                '<td><span class="lvl' + (r.st.level ? '' : ' none') + '">' +
+                    esc(r.st.level ? levelTitle(r.st.level) : 'не выбран') + '</span></td>' +
+                '<td><span class="mini"><span class="track"><i style="transform:scaleX(' + (r.pct / 100) + ')"></i></span>' +
+                    '<span>' + r.pct + '%</span></span></td>' +
+                '<td class="num">' + r.done + '</td>' +
+                '<td class="num">' + r.steps + '</td>' +
+                '<td class="num">' + r.games + '</td>' +
+                '<td class="ago' + (hot ? ' hot' : '') + '">' + ago(r.last) + '</td>' +
+                '<td><button class="reset" data-reset="' + esc(digits(r.st.phone)) + '">Сбросить код</button></td>' +
+              '</tr>';
+            }).join('') +
+            '</tbody></table>'
+          : '<div class="d-empty">' + (onlyWaiting ? 'Все ученики распределены по учителям.'
+                                                  : 'Учеников пока нет. Заведите первого на вкладке «Завести».') + '</div>') +
+      '</div></div>' +
+
+          '<div class="grid2">' +
+        /* Список допущенных номеров. Пустой список пускает всех — так удобно
+           на пробном этапе, поэтому состояние написано словами. */
+        '<div class="d-panel">' +
+          '<h2>Кто допущен</h2>' +
+          '<div class="d-hint" id="allowHint">Загружаю…</div>' +
+          '<div class="d-row">' +
+            '<input id="apPhone" type="tel" placeholder="+7 701 123 45 67">' +
+            '<input id="apNote" type="text" placeholder="Имя, необязательно">' +
+            '<button id="apAdd">Добавить</button>' +
+          '</div>' +
+          '<div class="chips" id="apList"></div>' +
+          '<div class="state" id="apState"></div>' +
+        '</div>' +
+
+        '<div class="d-panel">' +
+          '<h2>Падения у учеников</h2>' +
+          '<div class="d-hint">Последние двадцать. Пусто — значит ни у кого ничего не сломалось.</div>' +
+          (d.errors && d.errors.length
+            ? '<div class="errs">' + d.errors.map(function (e) {
+                return '<div><b>' + esc(e.message) + '</b>' +
+                       esc(e.source || '') + ' · ' + ago(e.created_at) + '</div>';
+              }).join('') + '</div>'
+            : '<div class="mini2">Пока чисто.</div>') +
+        '</div>' +
+          '</div>'
+        )
+      : view === 'new'
+        ? (
+      /* Заявка на ученика. Регистрация с улицы выключена, поэтому это
+         единственный вход в платформу: здесь номер и код рождаются вместе,
+         и их сразу диктуют человеку. Здесь же — вся анкета для учителя:
+         возраст, город, цель, формат, график и сетка уроков. Учитель её не
+         заводит и не переписывает, он в неё только преподаёт. */
+      '<div class="d-panel" style="margin-top:16px">' +
+        '<h2>Новый ученик</h2>' +
+        '<div class="d-hint">Аккаунт заводится сразу: номер станет логином, шесть цифр — кодом. ' +
+          'Номер сам попадёт в список допущенных. Уровень курса можно не ставить — ученик выберет при входе.</div>' +
+
+        '<div class="d-sec" style="border:0;padding:0;margin-top:0">Аккаунт в платформе</div>' +
+        '<div class="d-form">' +
+          '<div><label>Телефон *</label><input id="nsPhone" type="tel" inputmode="numeric" placeholder="+7 701 123 45 67"></div>' +
+          '<div><label>Имя *</label><input id="nsName" type="text" placeholder="Аяжан"></div>' +
+          '<div><label>Код, 6 цифр *</label><input id="nsCode" type="tel" inputmode="numeric" maxlength="6" placeholder="481902"></div>' +
+          '<div><label>Уровень курса</label><select id="nsLevel">' +
+            '<option value="">потом выберет сам</option>' +
+            COURSE.levels.map(function (l) {
+              return '<option value="' + esc(l.id) + '">' + esc(l.title) + '</option>';
+            }).join('') +
+          '</select></div>' +
+        '</div>' +
+
+        '<div class="d-sec">График и анкета</div>' +
+        '<div class="d-hint">Отметьте дни и время — это график ученика, по нему в платформе висит ' +
+          'плашка «скоро урок». Учителя можно не выбирать и поставить позже в «Изменить». ' +
+          'Ни дней, ни учителя — заведётся только аккаунт.</div>' +
+        cardFields(d, 'ns', true) +
+
+        '<div class="d-row" style="margin-top:14px"><button id="nsAdd">Завести</button></div>' +
+        '<div class="state" id="nsState"></div>' +
+        '<div id="nsCard"></div>' +
+      '</div>' +
+
+          '<div class="grid2">' +
+        /* Учитель — это обычный аккаунт платформы, помеченный в en_teachers.
+           Сначала заводим его формой выше как ученика, потом помечаем здесь. */
+        '<div class="d-panel">' +
+          '<h2>Учителя</h2>' +
+          '<div class="d-hint">Аккаунт учителя заводится формой «Новый ученик» — номер и код. ' +
+            'Потом номер отмечается здесь: с этого момента по нему открывается <b>teacher.html</b>. ' +
+            'Рабочие часы тут задаются грубо, по одной сетке на неделю; ' +
+            'поштучно окна открываются и закрываются на вкладке «Графики».</div>' +
+          '<div class="d-form">' +
+            '<div><label>Телефон</label><input id="tcPhone" type="tel" placeholder="+7 701 123 45 67"></div>' +
+            '<div><label>Имя</label><input id="tcName" type="text" placeholder="Айгерім"></div>' +
+            '<div><label>Ставка, ₸ за урок</label><input id="tcRate" type="number" min="0" placeholder="' + RATE + '"></div>' +
+            '<div class="one"><label>Резюме</label><textarea id="tcBio" placeholder="Опыт, методика, чем сильна"></textarea></div>' +
+            '<div class="one"><label>Рабочие дни</label><div class="days">' +
+              DAYS.map(function (x) {
+                return '<label><input type="checkbox" data-tday="' + x[0] + '"' +
+                       (x[0] !== 'sat' && x[0] !== 'sun' ? ' checked' : '') + '>' + x[1] + '</label>';
+              }).join('') + '</div></div>' +
+            '<div><label>Ведёт с</label><input id="tcFrom" type="time" step="3600" value="15:00"></div>' +
+            '<div><label>По</label><input id="tcTo" type="time" step="3600" value="20:00"></div>' +
+          '</div>' +
+          '<div class="d-row" style="margin-top:12px"><button id="tcAdd">Сделать учителем</button></div>' +
+          ((d.teachers || []).length
+            ? '<div class="tlist">' + d.teachers.map(function (t) {
+                var n = (d.cards || []).filter(function (c) { return c.teacher_id === t.id && !c.archived; }).length;
+                var sl = SCHED.slots(t);
+                return '<div><b>' + esc(t.name || 'Без имени') + '</b>' +
+                       '<span>' + esc(phoneFmt(t.phone)) + ' · ' + (t.rate || RATE) + ' ₸ · ' +
+                       plural(n, 'ученик', 'ученика', 'учеников') + ' · ' +
+                       (sl.length ? plural(sl.length, 'окно', 'окна', 'окон') + ' в неделю'
+                                  : 'график не задан') + '</span></div>';
+              }).join('') + '</div>'
+            : '<div class="mini2" style="margin-top:10px">Учителей пока нет.</div>') +
+          '<div class="state" id="tcState"></div>' +
+        '</div>' +
+          '</div>'
+        )
+      : view === 'sched' ? viewSched(d)
+      : view === 'control' ? viewControl(d)
+      : viewAll(d));
+    /* Вопросы в контроле видны и на свёрнутой вкладке браузера. */
+    var nq = control(d).an.tickets.length;
+    document.title = (nq ? '(' + nq + ') ' : '') + '1English · дашборд';
+
+    root.querySelector('#out').onclick = function () { stop(); DB.signOut(); auth(''); };
+
+    Array.prototype.forEach.call(root.querySelectorAll('[data-view]'), function (b) {
+      b.onclick = function () { view = b.getAttribute('data-view'); flash = {}; render(lastData); };
+    });
+
+    Array.prototype.forEach.call(root.querySelectorAll('[data-reset]'), function (b) {
+      b.onclick = function () { resetCode(b.getAttribute('data-reset')); };
+    });
+    Array.prototype.forEach.call(root.querySelectorAll('[data-edit]'), function (b) {
+      b.onclick = function () { editStudent(b.getAttribute('data-edit')); };
+    });
+    var wf = root.querySelector('#waitF');
+    if (wf) wf.onclick = function () { onlyWaiting = !onlyWaiting; render(lastData); };
+    wireAllowed();
+    wireNewStudent();
+    wireTeachers();
+    wireSched();
+    wireControl();
+    Object.keys(flash).forEach(function (id) {
+      var el = root.querySelector('#' + id);
+      if (el) { el.className = flash[id][0]; el.innerHTML = flash[id][1]; }
+    });
+  }
+
+  /* ── графики ────────────────────────────────────────────────────────
+     Лист на учителя: недельная сетка, где видно и его рабочее время, и кто
+     в нём сидит. Свободная клетка зелёная — на неё и записывают ученика.
+     Клик по пустой открывает окно, клик по зелёной закрывает: график
+     учителя ведёт админ, сам учитель его только смотрит. */
+  function viewSched(d) {
+    var ts = d.teachers || [];
+    if (!ts.length) {
+      return '<div class="d-empty">Учителей пока нет. Заведите первого на вкладке «Завести».</div>';
+    }
+    if (!schedTeacher || !ts.filter(function (t) { return t.id === schedTeacher; })[0]) {
+      schedTeacher = ts[0].id;
+    }
+    var t = ts.filter(function (x) { return x.id === schedTeacher; })[0];
+    var mine = (d.cards || []).filter(function (c) {
+      return c.teacher_id === t.id && !c.archived;
+    });
+
+    return '<div class="sheets">' +
+        ts.map(function (x) {
+          var n = (d.cards || []).filter(function (c) { return c.teacher_id === x.id && !c.archived; }).length;
+          return '<button data-sheet="' + esc(x.id) + '"' + (x.id === t.id ? ' class="on"' : '') + '>' +
+                 esc(x.name || phoneFmt(x.phone)) +
+                 '<span>' + plural(n, 'ученик', 'ученика', 'учеников') + '</span></button>';
+        }).join('') +
+      '</div>' +
+
+      '<div class="d-panel">' +
+        '<div class="d-sub"><h2>' + esc(t.name || phoneFmt(t.phone)) + '</h2>' +
+          '<span>' + esc(phoneFmt(t.phone)) + ' · ' + (t.rate || RATE) + ' ₸ за урок</span></div>' +
+        SCHED.grid(t, mine, true, extraTimes) +
+        '<div class="addtime">Нет нужного часа? ' +
+          '<input id="scTime" type="time" step="900" value="19:00">' +
+          '<button id="scAdd">Добавить строку</button>' +
+        '</div>' +
+        (mine.length
+          ? '<div class="stu-line">' + mine.map(function (c) {
+              return '<span><b>' + esc(c.name) + '</b> · ' +
+                     esc(dayNames(c.days) || 'без дней') +
+                     (c.time_at ? ', ' + esc(c.time_at) : '') + '</span>';
+            }).join('') + '</div>'
+          : '<div class="stu-line"><span>Учеников у этого учителя пока нет</span></div>') +
+      '</div>';
+  }
+
+  function wireSched() {
+    Array.prototype.forEach.call(root.querySelectorAll('[data-sheet]'), function (b) {
+      b.onclick = function () { schedTeacher = b.getAttribute('data-sheet'); render(lastData); };
+    });
+
+    var add = root.querySelector('#scAdd');
+    if (add) add.onclick = function () {
+      var v = root.querySelector('#scTime').value;
+      if (v && extraTimes.indexOf(v) < 0) extraTimes.push(v);
+      render(lastData);
+    };
+
+    /* Клик по клетке. Рисуем сразу, не дожидаясь базы: админ проставляет
+       график десятком кликов подряд, и ждать ответа на каждый — мучение.
+       Не прошло — честно говорим и перечитываем с сервера. */
+    Array.prototype.forEach.call(root.querySelectorAll('[data-slot]'), function (c) {
+      if (c.className.indexOf('busy') >= 0) return;
+      c.onclick = function () {
+        var t = (lastData.teachers || []).filter(function (x) { return x.id === schedTeacher; })[0];
+        if (!t) return;
+        var parts = c.getAttribute('data-slot').split('@');
+        t.slots = SCHED.toggle(t, parts[0], parts[1]);
+        render(lastData);
+        DB.rest('en_teachers?id=eq.' + encodeURIComponent(t.id), {
+          method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { slots: t.slots }
+        }).catch(function (e) { alert('График не сохранён: ' + e.message); pull(); });
+      };
+    });
+  }
+
+  /* ── сводная ────────────────────────────────────────────────────────
+     Все ученики всех учителей одной таблицей: кто кого ведёт, когда, на
+     сколько уроков договорились и сколько из них закрыто. */
+  function viewAll(d) {
+    var cards = (d.cards || []).filter(function (c) { return !c.archived && c.teacher_id; });
+    var byId = {};
+    (d.teachers || []).forEach(function (t) { byId[t.id] = t; });
+    var month = new Date().toISOString().slice(0, 7);
+
+    var rows = cards.map(function (c) {
+      var t = byId[c.teacher_id] || {};
+      var all = (c.lessons || []).map(C.legacy);
+      /* Проведено — отметки учителя; за месяц — то, что уже к выплате
+         (подтвердил клиент или админ), по месяцу, когда прошёл урок. */
+      var done = all.filter(function (l) { return l.taught; }).length;
+      var rate = c.rate == null ? (t.rate || RATE) : c.rate;
+      var nowLessons = all.filter(function (l) {
+        return C.payable(l) && String(l.taught_on || l.plan_date || l.done_at || '').slice(0, 7) === month;
+      }).length;
+      return { c: c, t: t, done: done, total: all.length, rate: rate,
+               pct: all.length ? Math.round(done / all.length * 100) : 0,
+               month: nowLessons, sum: nowLessons * rate, all: done * rate };
+    }).sort(function (a, b) {
+      return (a.t.name || '').localeCompare(b.t.name || '') || a.c.name.localeCompare(b.c.name);
+    });
+
+    var sumMonth = rows.reduce(function (a, r) { return a + r.sum; }, 0);
+    var lesMonth = rows.reduce(function (a, r) { return a + r.month; }, 0);
+
+    return '<div class="cards">' +
+        '<div class="kpi"><b>' + rows.length + '</b><span>учеников у учителей</span></div>' +
+        '<div class="kpi"><b>' + (d.teachers || []).length + '</b><span>учителей</span></div>' +
+        '<div class="kpi' + (lesMonth ? ' hot' : '') + '"><b>' + lesMonth + '</b><span>уроков в этом месяце</span></div>' +
+        '<div class="kpi"><b>' + money(sumMonth) + '</b><span>к выплате за месяц</span></div>' +
+      '</div>' +
+
+      '<div class="wrap"><div class="scrollx">' +
+        (rows.length
+          ? '<table><thead><tr>' +
+              '<th>Ученик</th><th>Учитель</th><th>Формат</th><th>График</th>' +
+              '<th class="num">Проведено</th><th class="num">План</th><th class="num">%</th>' +
+              '<th class="num">Ставка</th><th>Оплата клиента</th><th class="num">За месяц</th>' +
+            '</tr></thead><tbody>' +
+            rows.map(function (r) {
+              return '<tr>' +
+                '<td><span class="who"><span class="ava">' + esc(initial(r.c.name)) + '</span>' +
+                    '<span><b>' + esc(r.c.name) + '</b>' +
+                    '<span class="ph">' + esc(phoneFmt(r.c.phone)) + '</span></span></span></td>' +
+                '<td>' + esc(r.t.name || '—') + '</td>' +
+                '<td><span class="lvl">' + (r.c.format === 'group' ? 'Группа' : 'Индивид') + '</span></td>' +
+                '<td>' + esc(dayNames(r.c.days) || '—') +
+                  (r.c.time_at ? ', ' + esc(r.c.time_at) : '') + '</td>' +
+                '<td class="num">' + r.done + '</td>' +
+                '<td class="num">' + r.total + '</td>' +
+                '<td class="num">' + r.pct + '%</td>' +
+                '<td class="num">' + r.rate + ' ₸</td>' +
+                '<td>' + payChip(r.c) + '</td>' +
+                '<td class="num">' + money(r.sum) + '</td>' +
+              '</tr>';
+            }).join('') +
+            '</tbody><tfoot><tr><td colspan="9">Всего к выплате за ' + esc(monthRu(month)) + '</td>' +
+            '<td class="num">' + money(sumMonth) + '</td></tr></tfoot></table>'
+          : '<div class="d-empty">Ни одной карточки у учителей. Заводите ученика на вкладке «Завести» ' +
+            'и выбирайте учителя — он появится здесь.</div>') +
+      '</div></div>';
+  }
+
+  /* ── контроль уроков ────────────────────────────────────────────────
+     Учитель отмечает урок, два раза в месяц клиент подтверждает уроки по
+     ссылке из WhatsApp, подтверждённое уходит в выплату само. Здесь —
+     всё, где ответы расходятся или отметка выглядит странно, и ведомость.
+     Правила — app/control.js, тот же файл, что в витрине; база считает
+     done тем же правилом (patch_2026-10-16_control.sql). */
+  function controlOn(d) { return !!d && d.requests != null; }
+  var ctlCache = { d: null, v: null };
+  function control(d) {
+    if (ctlCache.d === d) return ctlCache.v;
+    var today = C.day(new Date()), lessons = [];
+    (d.cards || []).forEach(function (c) {
+      (c.lessons || []).forEach(function (l) { l.card_id = c.id; lessons.push(C.legacy(l)); });
+    });
+    var reqs = (d.requests || []).map(function (r) {
+      return Object.assign({}, r, { period_key: C.period(r.period_from).key });
+    });
+    var an = controlOn(d)
+      ? C.analyze({ teachers: d.teachers || [], cards: d.cards || [], lessons: lessons, requests: reqs }, today)
+      : { rows: [], tickets: [] };
+    ctlCache = { d: d, v: { an: an, today: today, reqs: reqs } };
+    return ctlCache.v;
+  }
+  function payChip(c) {
+    if (!c.paid_until) return '<span class="mini2">—</span>';
+    var left = C.diffDays(C.day(new Date()), c.paid_until);
+    var tone = left < 0 ? 'bad' : left <= 3 ? 'warn' : 'ok';
+    return '<span class="e-chip ' + tone + '">' + (left < 0 ? 'просрочено ' + (-left) + ' дн' :
+      left === 0 ? 'оплата сегодня' : 'до ' + C.dateLabel(c.paid_until, 'ru')) + '</span>';
+  }
+  function confirmUrl(token) {
+    var loc = typeof location === 'undefined' ? { origin: '', pathname: '/' } : location;
+    return (loc.origin || '') + String(loc.pathname || '/').replace(/[^/]*$/, '') + 'confirm.html?t=' + encodeURIComponent(token);
+  }
+  function reqText(d, r, kind) {
+    var card = (d.cards || []).filter(function (c) { return c.id === r.card_id; })[0] || {};
+    var t = (d.teachers || []).filter(function (x) { return x.id === card.teacher_id; })[0] || {};
+    var p = C.period(r.period_from); p.to = r.period_to;
+    var count = (card.lessons || []).filter(function (l) {
+      return l.taught && C.inPeriod(C.dateOf(l), p);
+    }).length;
+    return C.text(kind || 'request', { school: '1English', student: card.name, teacher: t.name || '',
+      period: p, count: count, url: confirmUrl(r.token) }, ctlLang);
+  }
+
+  var CTL_ACTS = {
+    dispute: [['paid', 'Урок был — к выплате'], ['void', 'Урока не было — снять'], ['client'], ['teacher']],
+    suspect: [['paid', 'Подтверждаю — к выплате'], ['void', 'Снять отметку'], ['teacher'], ['client']],
+    ghost:   [['paid', 'Засчитать урок'], ['void', 'Не засчитывать'], ['teacher']],
+    unsure:  [['paid', 'Урок был — к выплате'], ['void', 'Не засчитывать'], ['client']],
+    lowq:    [['paid', 'Выплатить'], ['void', 'Не выплачивать'], ['teacher']],
+    silent:  [['remind'], ['paid', 'Выплатить по журналу'], ['void', 'Не выплачивать']]
+  };
+  var CTL_TONE = { dispute: 'bad', suspect: 'bad', ghost: 'warn', unsure: 'warn', lowq: 'warn', silent: 'warn' };
+
+  function viewControl(d) {
+    if (!controlOn(d)) {
+      return '<div class="d-panel" style="margin-top:16px"><h2>Контроль уроков ещё не включён</h2>' +
+        '<div class="d-hint" style="margin:6px 0 0">Один раз: Supabase → SQL Editor → вставить целиком ' +
+        '<b>backend/patch_2026-10-16_control.sql</b> → Run. Запускать можно повторно, старые галочки ' +
+        'останутся к выплате. Посмотреть, как это работает, — <a href="dashboard.html?demo=1">dashboard.html?demo=1</a>.</div></div>';
+    }
+    var x = control(d), an = x.an, today = x.today;
+    var P1 = C.lastClosed(today), P2 = C.period(today), P0 = C.prevPeriod(P1);
+    var p = C.periodByKey(ctlPeriod) || P1;
+    var rows = C.forPeriod(an, p), mm = C.money(rows);
+    var byCard = {}; (d.cards || []).forEach(function (c) { byCard[c.id] = c; });
+
+    var reqs = x.reqs.filter(function (r) { return r.period_key === p.key; });
+    var missing = (d.cards || []).filter(function (c) {
+      return !c.archived && c.teacher_id && !reqs.some(function (r) { return r.card_id === c.id; }) &&
+        (c.lessons || []).some(function (l) { return (l.taught || l.plan_date) && C.inPeriod(C.dateOf(l), p); });
+    }).length;
+
+    function ticket(t) {
+      var r = t.rows[0], l = r.l, phoneC = t.card.phone, phoneT = (t.teacher || {}).phone;
+      var acts = CTL_ACTS[t.kind].map(function (a) {
+        if (a[0] === 'paid') return '<button class="e-btn sm ok" data-res="' + esc(t.id) + '" data-how="paid">' + a[1] + '</button>';
+        if (a[0] === 'void') return '<button class="e-btn sm danger" data-res="' + esc(t.id) + '" data-how="void">' + a[1] + '</button>';
+        if (a[0] === 'remind') return t.request && phoneC
+          ? '<a class="e-btn sm wa" target="_blank" rel="noopener" data-remind="' + esc(t.request.id) + '" href="' +
+            esc(C.waLink(phoneC, reqText(d, t.request, 'reminder'))) + '">Напомнить в WhatsApp</a>' : '';
+        var to = a[0] === 'client' ? phoneC : phoneT;
+        if (!to) return '';
+        var msg = a[0] === 'client'
+          ? 'Здравствуйте! Это администратор 1English. Уточните, пожалуйста, по уроку ' + t.card.name + ' ' +
+            C.dateLabel(r.date, 'ru') + ': как он прошёл? Хотим, чтобы всё было честно и для вас, и для учителя.'
+          : 'Добрый день! По уроку ' + t.card.name + ' ' + C.dateLabel(r.date, 'ru') + ' есть вопрос: ' +
+            C.KIND[t.kind].toLowerCase() + '. Расскажите, пожалуйста, как прошло занятие.';
+        return '<a class="e-btn sm sec" target="_blank" rel="noopener" href="' + esc(C.waLink(to, msg)) + '">' +
+          (a[0] === 'client' ? 'Написать клиенту' : 'Написать учителю') + '</a>';
+      }).join('');
+      return '<article class="e-ticket ' + CTL_TONE[t.kind] + '">' +
+        '<div class="hd"><span class="e-chip ' + CTL_TONE[t.kind] + '">' + esc(C.KIND[t.kind]) + '</span>' +
+          '<span class="sum">' + money(t.sum) + '</span></div>' +
+        '<div class="nm"><b>' + esc(t.card.name) + '</b> учитель ' + esc((t.teacher || {}).name || '—') + ' · ' +
+          C.periodLabel(t.period, 'ru') + '</div>' +
+        (t.kind === 'silent'
+          ? '<p>' + t.rows.map(function (q) { return C.dateLabel(q.date, 'ru'); }).join(' · ') + '. Запрос ушёл ' +
+            (t.request && t.request.sent_at ? C.dateLabel(C.day(t.request.sent_at), 'ru') : '—') +
+            (t.request && t.request.reminded_at ? ', напоминание — ' + C.dateLabel(C.day(t.request.reminded_at), 'ru') : '') + '.</p>'
+          : '<p><b>' + C.dateLabel(r.date, 'ru') + '</b> · ' + esc(l.topic || 'урок ' + l.idx) + '</p>') +
+        (l.client_note && t.kind !== 'silent' ? '<div class="e-quote">«' + esc(l.client_note) + '»</div>' : '') +
+        (t.kind === 'suspect' ? '<div class="e-tags">' + r.flags.map(function (f) {
+          return '<span class="e-flag">' + esc(C.FLAG[f]) + '</span>'; }).join('') + '</div>' : '') +
+        '<div class="e-acts">' + acts + '</div></article>';
+    }
+
+    function request(r) {
+      var c = byCard[r.card_id] || {}, silent = C.isSilent(r, today);
+      var state = r.answered_at ? '<span class="e-chip ok">ответил ' + C.dateLabel(C.day(r.answered_at), 'ru') + '</span>'
+        : silent ? '<span class="e-chip warn">молчит ' + C.diffDays(C.day(r.sent_at), today) + ' дн</span>'
+        : r.sent_at ? '<span class="e-chip wait">отправлен ' + C.dateLabel(C.day(r.sent_at), 'ru') + '</span>'
+        : '<span class="e-chip mute">не отправлен</span>';
+      var kind = r.sent_at && !r.answered_at ? 'reminder' : 'request';
+      return '<div class="e-li"><span class="e-who"><span class="e-ava">' + esc(initial(c.name)) + '</span>' +
+          '<span style="min-width:0"><b>' + esc(c.name || '—') + '</b><small>' + esc(phoneFmt(c.phone)) + '</small></span></span>' + state +
+        '<div class="e-acts">' +
+          (c.phone && !r.answered_at ? '<a class="e-btn sm wa" target="_blank" rel="noopener" data-sent="' + esc(r.id) +
+            '" data-kind="' + kind + '" href="' + esc(C.waLink(c.phone, reqText(d, r, kind))) + '">' +
+            (kind === 'reminder' ? 'Напомнить' : 'Отправить') + ' в WhatsApp</a>' : '') +
+          '<button class="e-btn sm sec" data-copy="' + esc(confirmUrl(r.token)) + '">Скопировать ссылку</button>' +
+          '<a class="e-btn sm sec" target="_blank" rel="noopener" href="' + esc(confirmUrl(r.token)) + '">Как видит клиент</a>' +
+        '</div></div>';
+    }
+
+    var pay = C.payroll(an, p, d.teachers || []);
+    var tot = { payable: 0, review: 0, awaiting: 0 };
+    pay.forEach(function (y) { tot.payable += y.money.payable; tot.review += y.money.review; tot.awaiting += y.money.awaiting; });
+
+    return '<div class="d-sub" style="margin-top:4px"><h2>Контроль уроков</h2>' +
+        '<span>Учитель отмечает урок → клиент подтверждает по ссылке → подтверждённое уходит в выплату само.</span></div>' +
+      '<div class="sheets">' + [P0, P1, P2].map(function (q) {
+        return '<button data-cp="' + q.key + '"' + (q.key === p.key ? ' class="on"' : '') + '>' + C.periodLabel(q, 'ru') +
+          '<span>' + (C.isClosed(q, today) ? 'закрыт' : 'идёт') + '</span></button>';
+      }).join('') + '</div>' +
+      '<div class="e-flow">' +
+        '<div class="e-kpi navy"><span>Учителя отметили</span><b>' + money(mm.claimed) + '</b><small>' +
+          plural(mm.n.claimed, 'урок', 'урока', 'уроков') + '</small></div>' +
+        '<div class="arrow" aria-hidden="true">→</div>' +
+        '<div class="e-kpi ok"><span>Подтверждено, к выплате</span><b>' + money(mm.payable) + '</b><small>' + mm.n.payable + ' ур.</small></div>' +
+        '<div class="e-kpi"><span>Ждёт ответа клиента</span><b>' + money(mm.awaiting) + '</b><small>' + mm.n.awaiting + ' ур.</small></div>' +
+        '<div class="e-kpi ' + (mm.review ? 'bad' : '') + '"><span>На проверке</span><b>' + money(mm.review) + '</b><small>' +
+          mm.n.review + ' ур. не выплачиваются</small></div>' +
+      '</div>' +
+      '<div class="e-grid two">' +
+        '<section class="e-card"><div class="e-card-h"><h2>Очередь на разбор</h2>' +
+          '<span class="e-chip ' + (an.tickets.length ? 'bad' : 'ok') + ' plain">' + an.tickets.length + '</span>' +
+          '<span class="sub">Все периоды. Пока админ не решил — деньги не выплачиваются.</span></div>' +
+          (an.tickets.length ? '<div class="e-tickets">' + an.tickets.map(ticket).join('') + '</div>'
+            : '<div class="e-empty"><b>Всё разобрано</b>Расхождений нет.</div>') +
+        '</section>' +
+        '<div class="e-stack">' +
+          '<section class="e-card flush"><div class="e-card-h"><h2>Запросы клиентам · ' + C.periodLabel(p, 'ru') + '</h2>' +
+            '<span class="sp"></span><div class="e-seg">' + ['kk', 'ru'].map(function (l) {
+              return '<button data-cl="' + l + '"' + (l === ctlLang ? ' class="on"' : '') + '>' + (l === 'kk' ? 'ҚАЗ' : 'РУС') + '</button>';
+            }).join('') + '</div>' +
+            '<span class="sub">' + (C.isClosed(p, today)
+              ? 'Кнопка открывает WhatsApp с готовым текстом и личной ссылкой. Через 2 дня без ответа — напомнить.'
+              : 'Период идёт: запросы лучше отправлять, когда он закроется — ' + C.dateLabel(C.addDays(p.to, 1), 'ru') + '.') + '</span></div>' +
+            (missing ? '<div style="padding:0 20px 14px"><button class="e-btn sm" id="ctlOpen">Создать ссылки за период (' + missing + ')</button></div>' : '') +
+            (reqs.length ? '<div class="e-list">' + reqs.map(request).join('') + '</div>'
+              : (missing ? '' : '<div class="e-empty">За этот период уроков нет.</div>')) +
+          '</section>' +
+          '<section class="e-card flush"><div class="e-card-h"><h2>Ведомость · ' + C.periodLabel(p, 'ru') + '</h2>' +
+            '<span class="sub">К выплате — только подтверждённое клиентом или администратором.</span></div>' +
+            '<table class="e-table"><thead><tr><th>Учитель</th><th class="num">К выплате</th><th class="num">На проверке</th>' +
+              '<th class="num">Ждёт</th></tr></thead><tbody>' +
+            pay.map(function (y) {
+              return '<tr><td class="lead"><b>' + esc(y.teacher.name || phoneFmt(y.teacher.phone)) + '</b></td>' +
+                '<td class="num" data-l="К выплате"><b>' + money(y.money.payable) + '</b></td>' +
+                '<td class="num" data-l="На проверке">' + (y.money.review ? money(y.money.review) : '—') + '</td>' +
+                '<td class="num" data-l="Ждёт">' + (y.money.awaiting ? money(y.money.awaiting) : '—') + '</td></tr>';
+            }).join('') + '</tbody><tfoot><tr><td class="lead">Итого</td>' +
+              '<td class="num" data-l="К выплате">' + money(tot.payable) + '</td>' +
+              '<td class="num" data-l="На проверке">' + money(tot.review) + '</td>' +
+              '<td class="num" data-l="Ждёт">' + money(tot.awaiting) + '</td></tr></tfoot></table>' +
+          '</section>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function wireControl() {
+    function each(sel, fn) { Array.prototype.forEach.call(root.querySelectorAll(sel), fn); }
+    each('[data-cp]', function (b) { b.onclick = function () { ctlPeriod = b.getAttribute('data-cp'); render(lastData); }; });
+    each('[data-cl]', function (b) { b.onclick = function () { ctlLang = b.getAttribute('data-cl'); render(lastData); }; });
+    each('[data-res]', function (b) {
+      b.onclick = function () {
+        var t = control(lastData).an.tickets.filter(function (x) { return x.id === b.getAttribute('data-res'); })[0];
+        if (!t) return;
+        b.disabled = true;
+        DB.rpc('en_control_resolve', { p_ids: t.rows.map(function (r) { return r.l.id; }),
+                                       p_how: b.getAttribute('data-how'), p_note: 'решение администратора' })
+          .then(function (answer) { if (answer !== 'Готово') alert(answer); return pull(true); })
+          .catch(function (e) { b.disabled = false; alert(e.message); });
+      };
+    });
+    /* WhatsApp открывается ссылкой; отметку «отправлено» ставим тут же —
+       дальше видно, кто молчит. */
+    each('[data-sent],[data-remind]', function (a) {
+      a.addEventListener('click', function () {
+        var id = a.getAttribute('data-sent') || a.getAttribute('data-remind');
+        var field = a.getAttribute('data-remind') || a.getAttribute('data-kind') === 'reminder' ? 'reminded_at' : 'sent_at';
+        var body = {}; body[field] = new Date().toISOString();
+        DB.rest('en_confirm_requests?id=eq.' + encodeURIComponent(id), {
+          method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: body
+        }).then(function () { return pull(true); }).catch(function () {});
+      });
+    });
+    each('[data-copy]', function (b) {
+      b.onclick = function () {
+        var url = b.getAttribute('data-copy');
+        (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
+          .then(function () { b.textContent = 'Скопировано'; })
+          .catch(function () { prompt('Ссылка клиента:', url); });
+      };
+    });
+    var open = root.querySelector('#ctlOpen');
+    if (open) open.onclick = function () {
+      var p = C.periodByKey(ctlPeriod) || C.lastClosed(C.day(new Date()));
+      open.disabled = true;
+      DB.rpc('en_confirm_open', { p_from: p.from, p_to: p.to }).then(function () { return pull(true); })
+        .catch(function (e) { open.disabled = false; alert(e.message); });
+    };
+  }
+
+  function money(n) { return String(Math.round(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' ₸'; }
+  function dayNames(csv) {
+    var set = String(csv || '').split(',');
+    return DAYS.filter(function (d) { return set.indexOf(d[0]) >= 0; })
+               .map(function (d) { return d[1]; }).join(', ');
+  }
+  function monthRu(key) {
+    if (!/^\d{4}-\d{2}$/.test(key)) return key;
+    var names = ['январь','февраль','март','апрель','май','июнь','июль',
+                 'август','сентябрь','октябрь','ноябрь','декабрь'];
+    return names[Number(key.slice(5, 7)) - 1] + ' ' + key.slice(0, 4);
+  }
+
+  /* ── новый ученик ───────────────────────────────────────────────────
+     Одна кнопка делает две вещи: аккаунт в платформе (номер + код) и
+     карточку у учителя (анкета + сетка уроков). Вторая — только если
+     учитель выбран: бывают ученики без учителя, и наоборот.
+
+     Порядок важен. Сначала аккаунт: если номер занят, функция в базе
+     скажет об этом словами, и карточка не заведётся впустую. */
+  function wireNewStudent() {
+    var btn = root.querySelector('#nsAdd');
+    if (!btn) return;
+    var state = root.querySelector('#nsState'), card = root.querySelector('#nsCard');
+    var cd = root.querySelector('#nsCode');
+
+    cd.oninput = function () { cd.value = cd.value.replace(/\D/g, ''); };
+    function v(id) { var el = root.querySelector('#' + id); return el ? el.value.trim() : ''; }
+    var clashNow = wireFit(lastData, root, 'ns', null);
+
+    btn.onclick = function () {
+      var phone = v('nsPhone'), code = v('nsCode'), name = v('nsName');
+      /* накладка в графике: первое нажатие показывает её, второе заводит */
+      var clash = clashNow().join('|');
+      if (clash && btn.getAttribute('data-sure') !== clash) {
+        btn.setAttribute('data-sure', clash); btn.textContent = 'Завести с накладкой';
+        state.className = 'state bad'; state.textContent = 'В графике учителя накладка — она подсвечена выше. Нажмите ещё раз, если так и задумано.';
+        return;
+      }
+      if (String(phone).replace(/\D/g, '').length < 10) {
+        state.className = 'state bad'; state.textContent = 'Проверьте номер'; return;
+      }
+      if (!/^[0-9]{6}$/.test(code)) {
+        state.className = 'state bad'; state.textContent = 'Код — ровно шесть цифр'; return;
+      }
+      if (!name) {
+        state.className = 'state bad'; state.textContent = 'Имя обязательно: по нему ученика ищут все экраны'; return;
+      }
+
+      flash = {};
+      btn.disabled = true; state.className = 'state'; state.textContent = 'Завожу…';
+      DB.addStudent(phone, code, name, v('nsLevel')).then(function (answer) {
+        /* функция в базе отвечает словами: и про успех, и про «уже заведён» */
+        var okay = /^Готово/.test(answer);
+        state.className = 'state ' + (okay ? 'ok' : 'bad');
+        state.textContent = answer;
+        if (!okay) return null;
+
+        card.innerHTML = '<div class="issued"><b>' + esc(code) + '</b>' +
+          '<span>Код для ' + esc(phoneFmt(phone)) + ' · ' + esc(name) +
+          '. Продиктуйте его ученику: восстановить будет нечем, только сбросить.</span></div>';
+        return addCard(v, name, phone).then(function (added) {
+          if (added) state.textContent = answer + (v('nsTeacher') ? ' Карточка у учителя заведена.' : ' График сохранён, учителя поставите позже.');
+          clearForm();
+        });
+      }).catch(function (e) {
+        state.className = 'state bad'; state.textContent = e.message;
+      }).then(function () {
+        btn.disabled = false;
+        flash = { nsState: [state.className, state.innerHTML], nsCard: ['', card.innerHTML] };
+        pull(true);
+      });
+    };
+
+    function clearForm() {
+      ['nsPhone','nsName','nsCode','nsAge','nsCity','nsLvlText','nsGoal','nsNote','nsRate',
+       'nsTopics','nsHw'].forEach(function (id) {
+        var el = root.querySelector('#' + id); if (el) el.value = '';
+      });
+      Array.prototype.forEach.call(root.querySelectorAll('[data-day]'), function (i) { i.checked = false; });
+    }
+  }
+
+  /* Поля карточки у учителя. Одни и те же в трёх местах: в анкете нового
+     ученика (prefix ns), в окне «Изменить», когда учителя назначают позже
+     (prefix ed), и там же для уже заведённой карточки (prefix c0, c1…).
+     withNone — пункт «Без учителя» в списке. c — карточка, которую
+     правят: поля заполнены её значениями, а сетки (месяцы, темы) нет —
+     она уже лежит в базе и растёт кнопкой «+ месяц». */
+  function cardFields(d, p, withNone, c) {
+    c = c || {};
+    var edit = !!c.id, set = String(c.days || '').split(',');
+    function val(x) { return x == null ? '' : esc(x); }
+    return (
+      '<div class="d-form">' +
+        '<div><label>Учитель</label><select id="' + p + 'Teacher">' +
+          (withNone ? '<option value="">Без учителя</option>' : '') +
+          (d.teachers || []).map(function (t) {
+            return '<option value="' + esc(t.id) + '"' + (c.teacher_id === t.id ? ' selected' : '') + '>' +
+                   esc(t.name || phoneFmt(t.phone)) + '</option>';
+          }).join('') +
+        '</select></div>' +
+        '<div><label>Формат</label><select id="' + p + 'Format">' +
+          '<option value="individual">Индивидуально</option>' +
+          '<option value="group"' + (c.format === 'group' ? ' selected' : '') + '>Группа</option>' +
+        '</select></div>' +
+        '<div><label>Время</label><input id="' + p + 'Time" type="time" value="' + val(c.time_at || '18:00') + '"></div>' +
+        '<div class="one"><label>Дни недели</label><div class="days">' +
+          DAYS.map(function (x) {
+            return '<label><input type="checkbox" data-day="' + x[0] + '"' +
+                   (set.indexOf(x[0]) >= 0 ? ' checked' : '') + '>' + x[1] + '</label>';
+          }).join('') + '</div></div>' +
+        '<div class="one fit" id="' + p + 'Fit"></div>' +
+        '<div><label>Возраст</label><input id="' + p + 'Age" type="number" min="3" max="99" placeholder="14" value="' + val(c.age) + '"></div>' +
+        '<div><label>Город</label><input id="' + p + 'City" type="text" placeholder="Алматы" value="' + val(c.city) + '"></div>' +
+        '<div><label>Нынешний уровень</label><input id="' + p + 'LvlText" type="text" placeholder="Beginner" value="' + val(c.level) + '"></div>' +
+        '<div><label>Ставка учителю, ₸ за урок</label><input id="' + p + 'Rate" type="number" min="0" placeholder="как у учителя, ' + RATE + '" value="' + val(c.rate) + '"></div>' +
+        '<div><label>Начало занятий</label><input id="' + p + 'Start" type="date" value="' +
+          val(c.started_on || new Date().toISOString().slice(0, 10)) + '"></div>' +
+        /* Оплата клиента: у индивидуальных учеников она у всех своя. Поля
+           появляются, когда в базе есть патч контроля уроков. */
+        (controlOn(d) ?
+          '<div><label>Оплата клиента</label><select id="' + p + 'Pay">' +
+            [['', 'не указано'], ['month', 'помесячно'], ['two_weeks', 'раз в 2 недели'], ['lessons8', 'пакет 8 уроков'], ['other', 'другое']]
+              .map(function (x) {
+                return '<option value="' + x[0] + '"' + ((c.pay_plan || '') === x[0] ? ' selected' : '') + '>' + x[1] + '</option>';
+              }).join('') + '</select></div>' +
+          '<div><label>Оплачено до</label><input id="' + p + 'Paid" type="date" value="' + val(c.paid_until) + '"></div>' : '') +
+        (edit ? '' :
+          '<div><label>Месяцев обучения</label><input id="' + p + 'Months" type="number" min="1" max="36" value="4"></div>' +
+          '<div><label>Уроков в месяце</label><input id="' + p + 'Per" type="number" min="1" max="31" value="12"></div>') +
+        '<div class="one"><label>Цель обучения</label><input id="' + p + 'Goal" type="text" placeholder="Сдать IELTS на 6.5" value="' + val(c.goal) + '"></div>' +
+        '<div class="one"><label>Описание ученика</label><textarea id="' + p + 'Note" placeholder="Что важно знать учителю: характер, чего боится, что уже пробовал">' + val(c.note) + '</textarea></div>' +
+        (edit ? '' :
+          '<div class="one"><label>Темы уроков, по одной в строке</label><textarea id="' + p + 'Topics" placeholder="Знакомство&#10;Глагол to be&#10;Present Simple"></textarea></div>' +
+          '<div class="one"><label>Домашние задания, по одному в строке</label><textarea id="' + p + 'Hw" placeholder="Слова 1–10&#10;Упражнение 3"></textarea></div>') +
+      '</div>');
+  }
+
+  /* Дни, отмеченные в одной форме. scope — её рамка: в окне «Изменить»
+     форм несколько, и галочки одной не должны попадать в другую. */
+  function checkedDays(scope) {
+    var days = [];
+    Array.prototype.forEach.call(scope.querySelectorAll('[data-day]'), function (i) {
+      if (i.checked) days.push(i.getAttribute('data-day'));
+    });
+    return days;
+  }
+
+  /* Встаёт ли ученик в график учителя. Накладка — это час, который учитель
+     не ведёт, или час, где у него уже сидит другой ученик (группа с
+     группой в одном часе — не накладка, это одна группа). skip — id
+     карточки, которую правят: сама с собой она не пересекается. */
+  function fit(d, teacherId, days, time, format, skip) {
+    var t = (d.teachers || []).filter(function (x) { return x.id === teacherId; })[0];
+    if (!t) return { clash: [], free: [] };
+    var work = SCHED.slots(t);
+    var others = (d.cards || []).filter(function (c) {
+      return c.teacher_id === teacherId && !c.archived && c.id !== skip;
+    });
+    var busy = SCHED.taken(others);
+    var dn = {}; DAYS.forEach(function (x) { dn[x[0]] = x[1]; });
+
+    var clash = [];
+    if (time) days.forEach(function (day) {
+      var key = day + '@' + time;
+      if (work.length && work.indexOf(key) < 0) clash.push(dn[day] + ' ' + time + ' — учитель в это время не работает');
+      (busy[key] || []).forEach(function (o) {
+        if (format === 'group' && o.format === 'group') return;
+        clash.push(dn[day] + ' ' + time + ' — занято: ' + o.name);
+      });
+    });
+
+    /* свободные окна по дням: «Пн 16:00 17:00» */
+    var free = DAYS.map(function (x) {
+      var hours = work.filter(function (s) { return s.split('@')[0] === x[0] && !busy[s]; })
+                      .map(function (s) { return s.split('@')[1]; })
+                      .sort(function (a, b) { return (a.length - b.length) || a.localeCompare(b); });
+      return hours.length ? x[1] + ' ' + hours.join(' ') : '';
+    }).filter(Boolean);
+    return { clash: clash, free: free, noSlots: !work.length };
+  }
+
+  /* Подсказка под полями графика: где у учителя свободно и что не так с
+     выбранным временем. Пересчитывается на каждое изменение формы и
+     возвращает список накладок — по нему кнопка сохранения переспрашивает. */
+  function wireFit(d, scope, p, skip) {
+    var out = scope.querySelector('#' + p + 'Fit');
+    if (!out) return function () { return []; };
+    function get(x) { var el = scope.querySelector('#' + p + x); return el ? el.value : ''; }
+    function draw() {
+      var f = fit(d, get('Teacher'), checkedDays(scope), get('Time'), get('Format'), skip);
+      out.innerHTML = !get('Teacher') ? '' :
+        (f.noSlots ? '<span class="mini2">Рабочие часы учителя не заданы — вкладка «Графики».</span>'
+                   : '<span class="mini2">Свободно у учителя: ' +
+                     (f.free.length ? esc(f.free.join(' · ')) : 'окон нет') + '</span>') +
+        (f.clash.length ? '<span class="clash">' + f.clash.map(esc).join('<br>') + '</span>' : '');
+      return f.clash;
+    }
+    Array.prototype.forEach.call(scope.querySelectorAll('select,input'), function (el) {
+      el.addEventListener('change', draw);
+    });
+    draw();
+    return draw;
+  }
+
+  /* Карточка ученика у учителя и сразу вся сетка уроков: месяцев ×
+     уроков в месяце. Сетка заводится целиком, а не по мере проведения, —
+     учитель должен видеть план, а не пустое место. */
+  /* v — чтение поля по id, scope — где искать галочки дней, p — префикс
+     полей (ns в анкете, ed в окне «Изменить»). Номер кладётся уже
+     нормализованным: по нему карточку находят дашборд и кабинет. */
+  function addCard(v, name, phone, scope, p) {
+    p = p || 'ns';
+    var teacher = v(p + 'Teacher') || null;
+    var days = checkedDays(scope || root);
+    /* карточка — это учитель или хотя бы график; ни того ни другого — только аккаунт */
+    if (!teacher && !days.length) return Promise.resolve(false);
+
+    var months = Math.min(36, Math.max(1, Number(v(p + 'Months')) || 1));
+    var per    = Math.min(31, Math.max(1, Number(v(p + 'Per')) || 1));
+    var age    = Number(v(p + 'Age')) || null;
+    if (age != null && (age < 3 || age > 99)) age = null;
+
+    return DB.rest('en_teacher_students', {
+      method: 'POST', headers: { Prefer: 'return=representation' },
+      body: Object.assign({
+        teacher_id: teacher, name: String(name).slice(0, 60), phone: norm(phone),
+        age: age, city: v(p + 'City') || null,
+        level: v(p + 'LvlText') || null, format: v(p + 'Format') || 'individual',
+        days: days.join(','), time_at: v(p + 'Time') || null,
+        goal: v(p + 'Goal') || null, note: v(p + 'Note') || null,
+        rate: v(p + 'Rate') === '' ? null : Math.max(0, Number(v(p + 'Rate')) || 0),
+        months: months, per_month: per, started_on: v(p + 'Start') || null
+      }, payOf(v, p))
+    }).then(function (rows) {
+      var topics = v(p + 'Topics').split('\n'), hw = v(p + 'Hw').split('\n');
+      var plan = [], k = 0;
+      for (var m = 1; m <= months; m++)
+        for (var i = 1; i <= per; i++, k++)
+          plan.push({ card_id: rows[0].id, month: m, idx: i,
+                      topic: (topics[k] || '').trim() || null,
+                      homework: (hw[k] || '').trim() || null });
+      /* Сетка не легла — убираем и карточку. Иначе останется карточка без
+         уроков, а повторное нажатие заведёт вторую такую же. */
+      return DB.rest('en_teacher_lessons', {
+        method: 'POST', headers: { Prefer: 'return=minimal' }, body: plan
+      }).catch(function (e) {
+        return DB.rest('en_teacher_students?id=eq.' + encodeURIComponent(rows[0].id), {
+          method: 'DELETE', headers: { Prefer: 'return=minimal' }
+        }).catch(function () {}).then(function () { throw e; });
+      });
+    }).then(function () { return true; });
+  }
+
+  /* ── учителя ──────────────────────────────────────────────────────── */
+  function wireTeachers() {
+    var btn = root.querySelector('#tcAdd');
+    if (!btn) return;
+    var state = root.querySelector('#tcState');
+    function v(id) { var el = root.querySelector('#' + id); return el ? el.value.trim() : ''; }
+
+    btn.onclick = function () {
+      if (String(v('tcPhone')).replace(/\D/g, '').length < 10) {
+        state.className = 'state bad'; state.textContent = 'Проверьте номер'; return;
+      }
+      /* Из «ведёт с 15:00 по 20:00» делаем часовые окна на каждый
+         отмеченный день: пять дней по пять часов — это 25 слотов, и все
+         они сразу видны на вкладке «Графики». */
+      var days = [];
+      Array.prototype.forEach.call(root.querySelectorAll('[data-tday]'), function (i) {
+        if (i.checked) days.push(i.getAttribute('data-tday'));
+      });
+      var from = Number(String(v('tcFrom')).slice(0, 2));
+      var to   = Number(String(v('tcTo')).slice(0, 2));
+      var slots = [];
+      if (days.length && to > from) {
+        days.forEach(function (dd) {
+          for (var h = from; h < to; h++) slots.push(dd + '@' + (h < 10 ? '0' + h : h) + ':00');
+        });
+      }
+
+      btn.disabled = true; state.className = 'state'; state.textContent = 'Отмечаю…';
+      DB.rpc('en_make_teacher', {
+        p_phone: v('tcPhone'), p_name: v('tcName'),
+        p_bio: v('tcBio'), p_rate: Number(v('tcRate')) || RATE,
+        p_slots: slots.join(',')
+      }).then(function (answer) {
+        var okay = /^Готово/.test(answer);
+        state.className = 'state ' + (okay ? 'ok' : 'bad');
+        state.textContent = answer;
+        if (okay) {
+          ['tcPhone','tcName','tcBio','tcRate'].forEach(function (id) {
+            var el = root.querySelector('#' + id); if (el) el.value = '';
+          });
+          flash = { tcState: [state.className, state.innerHTML] };
+          pull(true);
+        }
+      }).catch(function (e) {
+        state.className = 'state bad'; state.textContent = e.message;
+      }).then(function () { btn.disabled = false; });
+    };
+  }
+
+  /* ── список допущенных ────────────────────────────────────────────── */
+  function wireAllowed() {
+    var hint = root.querySelector('#allowHint');
+    var list = root.querySelector('#apList');
+    var state = root.querySelector('#apState');
+    if (!hint) return;
+
+    function say(text, bad) { state.className = 'state ' + (bad ? 'bad' : 'ok'); state.textContent = text; }
+
+    function draw() {
+      DB.allowed.list().then(function (rows) {
+        hint.textContent = rows.length
+          ? 'В списке ' + rows.length + '. Остальные номера зарегистрируются, но их прогресс в базу не ляжет.'
+          : 'Список пуст — заходят все. Как только добавите первый номер, остальных перестанет пускать, поэтому начните со своего.';
+        list.innerHTML = rows.map(function (r) {
+          return '<span class="chip2"><b>' + esc(phoneFmt(r.phone)) + '</b>' +
+                 (r.note ? '<span>' + esc(r.note) + '</span>' : '') +
+                 '<button data-del="' + esc(digits(r.phone)) + '" title="Убрать">✕</button></span>';
+        }).join('');
+        Array.prototype.forEach.call(list.querySelectorAll('[data-del]'), function (b) {
+          b.onclick = function () {
+            DB.allowed.remove(b.getAttribute('data-del'))
+              .then(function () { say('Убрали'); draw(); })
+              .catch(function (e) { say(e.message, true); });
+          };
+        });
+      }).catch(function (e) { hint.textContent = e.message; });
+    }
+
+    root.querySelector('#apAdd').onclick = function () {
+      var ph = root.querySelector('#apPhone'), nt = root.querySelector('#apNote');
+      DB.allowed.add(ph.value, nt.value.trim()).then(function () {
+        ph.value = ''; nt.value = ''; say('Добавили'); draw();
+      }).catch(function (e) { say(e.message, true); });
+    };
+
+    draw();
+  }
+
+  /* ── учитель в строке ученика ─────────────────────────────────────── */
+  function teacherCell(r, d) {
+    var live = r.cards.filter(function (c) { return !c.archived; });
+    if (live.length) {
+      return '<span class="tch' + (r.wait ? ' wait' : '') + '">' + live.map(function (c) {
+        return c.teacher_id
+          ? esc(teacherName(d, c.teacher_id)) + (c.format === 'group' ? ' · группа' : '')
+          : 'без учителя · ' + esc(dayNames(c.days) || 'дни не заданы') + (c.time_at ? ', ' + esc(c.time_at) : '');
+      }).join('<br>') + '</span>';
+    }
+    if (r.cards.length) return '<span class="tch wait">архив</span>';
+    if (!r.wait) return '<span class="tch wait">—</span>';
+    var h = hoursSince(r.st.created_at);
+    var late = h > WAIT_HOURS;
+    return '<span class="tch ' + (late ? 'late' : 'wait') + '">нет · ждёт ' +
+           (h < 24 ? Math.max(0, Math.floor(h)) + ' ч' : Math.floor(h / 24) + ' дн') + '</span>';
+  }
+
+  /* ── изменить ученика ───────────────────────────────────────────────
+     Второй заход после «Завести» и все следующие: имя, номер, уровень,
+     учитель, график, формат, ставка, анкета, архив и сетка уроков — всё
+     здесь, в кабинет учителя за этим ходить не нужно. Окно живёт вне
+     #root, поэтому обновление раз в 10 секунд его не трогает. */
+  function editStudent(id) {
+    var d = lastData;
+    var st = (d.students || []).filter(function (x) { return x.id === id; })[0];
+    if (!st) return;
+    var cs = cardsOf(st, d);
+    var live = cs.filter(function (c) { return !c.archived; });
+    var arch = cs.filter(function (c) { return c.archived; });
+    var ts = d.teachers || [];
+
+    /* Проведённые — по отметке учителя: урок, который ждёт клиента, уже
+       принадлежит прежнему учителю, хоть ещё и не в выплате. */
+    function doneOf(c) { return (c.lessons || []).map(C.legacy).filter(function (l) { return l.taught; }).length; }
+
+    /* Уже заведённая карточка: вся анкета открыта для правки. */
+    function cardBox(c, k) {
+      var done = doneOf(c), all = (c.lessons || []).length;
+      return '<div class="cardbox" id="cb' + k + '">' +
+        '<div class="cb-head"><b>' + (c.teacher_id ? esc(teacherName(d, c.teacher_id)) : 'Без учителя') + '</b>' +
+          '<span>проведено ' + done + ' из ' + all + ' · месяцев ' + (c.months || 1) +
+          ' по ' + (c.per_month || 12) + ' уроков</span></div>' +
+        cardFields(d, 'c' + k, true, c) +
+        (done && c.teacher_id ? '<div class="d-hint" style="margin:10px 0 0">Сменить учителя: проведённые уроки ' +
+                'останутся за прежним (по ним уже считается зарплата), непроведённые переедут к новому.</div>' : '') +
+        '<div class="dlg-foot">' +
+          '<button data-arch="' + k + '">В архив</button>' +
+          '<button data-month="' + k + '">+ месяц уроков</button>' +
+          '<button class="go" data-save="' + k + '">Сохранить карточку</button>' +
+        '</div>' +
+        '<div class="state" id="c' + k + 'State"></div>' +
+      '</div>';
+    }
+
+    dlgBody.innerHTML =
+      '<h3>' + esc(st.name || 'Без имени') + '</h3>' +
+      '<div class="d-hint">Заведён ' + esc(ago(st.created_at)) + '. Код входа здесь не меняется — ' +
+        'для этого «Сбросить код» в строке.</div>' +
+
+      '<div class="d-sec" style="border:0;padding:0;margin-top:0">Аккаунт в платформе</div>' +
+      '<div class="d-form">' +
+        '<div><label>Имя *</label><input id="edName" type="text" maxlength="40" value="' + esc(st.name || '') + '"></div>' +
+        '<div><label>Телефон *</label><input id="edPhone" type="tel" inputmode="numeric" value="' + esc(phoneFmt(st.phone)) + '"></div>' +
+        '<div><label>Уровень курса</label><select id="edLevel">' +
+          '<option value="">потом выберет сам</option>' +
+          COURSE.levels.map(function (l) {
+            return '<option value="' + esc(l.id) + '"' + (st.level === l.id ? ' selected' : '') + '>' +
+                   esc(l.title) + '</option>';
+          }).join('') +
+        '</select></div>' +
+      '</div>' +
+      '<div class="d-hint" style="margin:8px 0 0">Сменили номер — ученик входит новым номером и прежним кодом.</div>' +
+      '<div class="dlg-foot" style="margin-top:12px"><button class="go" id="edSave">Сохранить аккаунт</button></div>' +
+      '<div class="state" id="edState"></div>' +
+
+      '<div class="d-sec">График и учитель</div>' +
+      live.map(cardBox).join('') +
+      /* Новая карточка. Если карточки нет — это главное действие окна;
+         если есть — вторая (группа плюс индивидуально) под раскрывашкой,
+         чтобы не путать с правкой первой. */
+      (live.length ? '<details class="more"><summary>Ещё одна карточка — например, группа и индивидуально</summary>' : '') +
+        (arch.length && !live.length ? '<div class="d-hint">Прежняя карточка в архиве. Можно завести новую.</div>' : '') +
+        '<div class="d-hint">Дни и время — график ученика, по нему в платформе висит плашка «скоро урок». ' +
+          (ts.length ? 'Учителя можно поставить сейчас или позже.' : 'Учителей пока нет — поставите позже.') + '</div>' +
+        '<div id="edCardBox">' + cardFields(d, 'ed', true) + '</div>' +
+        '<div class="dlg-foot"><button class="go" id="edAssign">Сохранить</button></div>' +
+        '<div class="state" id="edCardState"></div>' +
+      (live.length ? '</details>' : '') +
+
+      (arch.length
+        ? '<div class="d-sec">Архив</div>' + arch.map(function (c) {
+            return '<div class="has-card"><b>' + esc(teacherName(d, c.teacher_id)) + '</b> · ' +
+              (c.format === 'group' ? 'группа' : 'индивидуально') + ' · проведено ' + doneOf(c) +
+              ' из ' + (c.lessons || []).length +
+              ' <button class="ed" data-back="' + esc(c.id) + '">Вернуть в работу</button></div>';
+          }).join('')
+        : '') +
+
+      '<div class="dlg-foot" style="border-top:1px solid var(--line);padding-top:14px">' +
+        '<button id="edClose">Закрыть</button></div>';
+
+    function v(x) { var el = dlgBody.querySelector('#' + x); return el ? el.value.trim() : ''; }
+    function say(where, text, bad) {
+      var el = dlgBody.querySelector('#' + where);
+      if (el) { el.className = 'state ' + (bad ? 'bad' : 'ok'); el.textContent = text; }
+    }
+    /* После любой записи — свежие данные и окно заново, уже по ним. */
+    function reopen() { return pull().then(function () { editStudent(st.id); }); }
+
+    dlgBody.querySelector('#edClose').onclick = function () { dlg.close(); };
+
+    /* Накладки в графике переспрашивают: первое нажатие показывает, что не
+       так, второе сохраняет как есть — админ может знать больше сетки. */
+    function confirmed(btn, clash, where) {
+      /* подтверждают именно эту накладку: поменял время — спросим снова */
+      if (!clash.length || btn.getAttribute('data-sure') === clash.join('|')) return true;
+      btn.setAttribute('data-sure', clash.join('|'));
+      btn.textContent = 'Сохранить с накладкой';
+      say(where, 'В графике накладка — она подсвечена выше. Нажмите ещё раз, если так и задумано.', true);
+      return false;
+    }
+
+    live.forEach(function (c, k) {
+      var box = dlgBody.querySelector('#cb' + k), p = 'c' + k;
+      var clashNow = wireFit(d, box, p, c.id);
+
+      box.querySelector('[data-save]').onclick = function () {
+        var btn = this;
+        if (!confirmed(btn, clashNow(), p + 'State')) return;
+        var body = cardBody(v, p, box);
+        btn.disabled = true; say(p + 'State', 'Сохраняю…');
+        /* Смена учителя при проведённых уроках — перенос, иначе правка на месте. */
+        var job = (c.teacher_id && body.teacher_id !== c.teacher_id && doneOf(c))
+          ? moveCard(c, body)
+          : DB.rest('en_teacher_students?id=eq.' + encodeURIComponent(c.id), {
+              method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: body });
+        job.then(reopen).catch(function (e) { btn.disabled = false; say(p + 'State', e.message, true); });
+      };
+
+      box.querySelector('[data-arch]').onclick = function () {
+        var btn = this;
+        if (!btn.getAttribute('data-sure')) {
+          btn.setAttribute('data-sure', '1'); btn.textContent = 'Точно в архив?';
+          say(p + 'State', 'Карточка уйдёт с доски учителя, окна в графике освободятся. Уроки и зарплата по ним сохранятся.', true);
+          return;
+        }
+        btn.disabled = true;
+        DB.rest('en_teacher_students?id=eq.' + encodeURIComponent(c.id), {
+          method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { archived: true }
+        }).then(reopen).catch(function (e) { btn.disabled = false; say(p + 'State', e.message, true); });
+      };
+
+      /* Ещё один месяц той же длины, как «+ месяц» в кабинете учителя. */
+      box.querySelector('[data-month]').onclick = function () {
+        var btn = this, next = (c.months || 1) + 1, per = c.per_month || 12, plan = [];
+        for (var i = 1; i <= per; i++) plan.push({ card_id: c.id, month: next, idx: i });
+        btn.disabled = true; say(p + 'State', 'Добавляю месяц…');
+        DB.rest('en_teacher_lessons', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: plan })
+          .then(function () {
+            return DB.rest('en_teacher_students?id=eq.' + encodeURIComponent(c.id), {
+              method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { months: next } });
+          }).then(reopen).catch(function (e) { btn.disabled = false; say(p + 'State', e.message, true); });
+      };
+    });
+
+    Array.prototype.forEach.call(dlgBody.querySelectorAll('[data-back]'), function (b) {
+      b.onclick = function () {
+        b.disabled = true;
+        DB.rest('en_teacher_students?id=eq.' + encodeURIComponent(b.getAttribute('data-back')), {
+          method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { archived: false }
+        }).then(reopen).catch(function (e) { b.disabled = false; alert(e.message); });
+      };
+    });
+
+    dlgBody.querySelector('#edSave').onclick = function () {
+      var btn = this, name = v('edName'), phone = v('edPhone');
+      if (!name) { say('edState', 'Имя обязательно', true); return; }
+      if (!DB.normPhone(phone)) { say('edState', 'Проверьте номер: нужен казахстанский, 11 цифр', true); return; }
+      btn.disabled = true; say('edState', 'Сохраняю…');
+      DB.rpc('en_edit_student', { p_id: st.id, p_name: name, p_phone: phone, p_level: v('edLevel') || null })
+        .then(function (answer) {
+          var okay = /^Готово/.test(answer);
+          say('edState', answer, !okay);
+          if (okay) {
+            /* сразу в памяти, чтобы кнопка «Поставить к учителю» взяла новое имя и номер */
+            st.name = name; st.phone = DB.normPhone(phone); st.level = v('edLevel') || null;
+            pull();
+          }
+        })
+        .catch(function (e) { say('edState', e.message, true); })
+        .then(function () { btn.disabled = false; });
+    };
+
+    var assign = dlgBody.querySelector('#edAssign');
+    var edBox = dlgBody.querySelector('#edCardBox');
+    var edClash = edBox ? wireFit(d, edBox, 'ed', null) : null;
+    if (assign) assign.onclick = function () {
+      var btn = this;
+      if (!v('edTeacher') && !checkedDays(edBox).length) {
+        say('edCardState', 'Отметьте дни занятий или выберите учителя', true); return;
+      }
+      /* К тому же учителю (или второй раз без учителя) не заводим: это
+         дубль, а не второй формат — он правится в карточке выше. */
+      if (cardsOf(st, lastData).some(function (c) { return !c.archived && (c.teacher_id || '') === v('edTeacher'); })) {
+        say('edCardState', v('edTeacher') ? 'У этого учителя ученик уже есть — правьте его карточку выше'
+                                          : 'Карточка без учителя уже есть — правьте её выше', true); return;
+      }
+      if (!confirmed(btn, edClash(), 'edCardState')) return;
+      btn.disabled = true; say('edCardState', 'Ставлю к учителю…');
+      addCard(v, st.name || 'Без имени', st.phone, edBox, 'ed')
+        .then(reopen)
+        .catch(function (e) { btn.disabled = false; say('edCardState', e.message, true); });
+    };
+
+    if (!dlg.open) dlg.showModal();
+  }
+
+  /* Поля карточки из формы — ровно то, что пишется PATCH-ем. */
+  function cardBody(v, p, scope) {
+    var age = Number(v(p + 'Age')) || null;
+    if (age != null && (age < 3 || age > 99)) age = null;
+    return Object.assign({
+      teacher_id: v(p + 'Teacher') || null, format: v(p + 'Format') || 'individual',
+      days: checkedDays(scope).join(','), time_at: v(p + 'Time') || null,
+      age: age, city: v(p + 'City') || null, level: v(p + 'LvlText') || null,
+      rate: v(p + 'Rate') === '' ? null : Math.max(0, Number(v(p + 'Rate')) || 0),
+      started_on: v(p + 'Start') || null,
+      goal: v(p + 'Goal') || null, note: v(p + 'Note') || null
+    }, payOf(v, p));
+  }
+  /* Поля оплаты — только если в базе есть их колонки, иначе PostgREST
+     отклонит всю запись из-за одного незнакомого поля. */
+  function payOf(v, p) {
+    if (!controlOn(lastData)) return {};
+    return { pay_plan: v(p + 'Pay') || null, paid_until: v(p + 'Paid') || null };
+  }
+
+  /* Смена учителя, когда уроки уже шли. Проведённые уроки держат зарплату
+     прежнего учителя, поэтому карточку не перевешиваем, а делим: прежняя
+     уходит в архив со своими проведёнными, новая получает непроведённые
+     (с темами, домашкой и датами). Колонку card_id у урока из браузера
+     не поменять — уроки переезжают вставкой и удалением.
+
+     Порядок — чтобы сбой на любом шаге не терял план: сначала новая
+     карточка и её уроки (не легли — новая карточка удаляется), и только
+     потом удаление старых непроведённых и архив. */
+  function moveCard(c, body) {
+    var fresh;
+    /* Переезжают только нетронутые уроки: не отмеченные учителем, без
+       ответа клиента и без решения админа. Урок, который ждёт клиента,
+       остаётся у того, кто его провёл. До патча контроля колонок taught
+       нет — тогда, как раньше, по done. */
+    return DB.rest('en_teacher_lessons?card_id=eq.' + encodeURIComponent(c.id) +
+                   (controlOn(lastData) ? '&taught=is.false&client_answer=is.null&review=is.null' : '&done=is.false') +
+                   '&select=id,month,idx,topic,homework,plan_date')
+      .then(function (rest) {
+        fresh = rest || [];
+        return DB.rest('en_teacher_students', {
+          method: 'POST', headers: { Prefer: 'return=representation' },
+          body: Object.assign({}, body, { name: c.name, phone: c.phone,
+                                          months: c.months || 1, per_month: c.per_month || 12 })
+        });
+      }).then(function (rows) {
+        var id = rows[0].id;
+        if (!fresh.length) return;
+        return DB.rest('en_teacher_lessons', {
+          method: 'POST', headers: { Prefer: 'return=minimal' },
+          body: fresh.map(function (l) {
+            return { card_id: id, month: l.month, idx: l.idx, topic: l.topic,
+                     homework: l.homework, plan_date: l.plan_date };
+          })
+        }).catch(function (e) {
+          return DB.rest('en_teacher_students?id=eq.' + encodeURIComponent(id), {
+            method: 'DELETE', headers: { Prefer: 'return=minimal' }
+          }).catch(function () {}).then(function () { throw e; });
+        });
+      }).then(function () {
+        if (!fresh.length) return;
+        return DB.rest('en_teacher_lessons?id=in.(' + fresh.map(function (l) {
+          return encodeURIComponent(l.id); }).join(',') + ')', {
+          method: 'DELETE', headers: { Prefer: 'return=minimal' } });
+      }).then(function () {
+        return DB.rest('en_teacher_students?id=eq.' + encodeURIComponent(c.id), {
+          method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { archived: true } });
+      });
+  }
+
+  /* ── сброс кода ───────────────────────────────────────────────────── */
+  function resetCode(phone) {
+    var code = prompt('Новый код из шести цифр для ' + phoneFmt(phone) + ':', '');
+    if (!code) return;
+    DB.resetCode(phone, code.trim()).then(function (answer) {
+      alert(answer);
+      pull();
+    }).catch(function (e) { alert(e.message); });
+  }
+
+  /* Обновление раз в 10 секунд вместо подписки на изменения: для десятков
+     учеников разницы не видно, а websocket и переподключения не нужны.
+     Вкладка в фоне не опрашивает — это лишние запросы в бесплатный тариф. */
+  function start() {
+    pull();
+    stop();
+    timer = setInterval(function () { if (!document.hidden) pull(); }, 10000);
+  }
+  function stop() { if (timer) clearInterval(timer); timer = null; }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && timer) pull(); });
+
+  /* ── тестовый режим ───────────────────────────────────────────────
+     dashboard.html?demo=1 — весь дашборд на выдуманных данных: ни базы,
+     ни входа. Нужен, чтобы посмотреть и покликать, пока патч схемы не
+     применён. Правки живут в памяти вкладки и пропадают с обновлением:
+     ни одна строка никуда не уходит. Кабинет учителя устроен так же —
+     teacher.html?demo=1. */
+  function demo() {
+    /* Уроки по графику ученика: прошлая половина месяца закрыта и
+       подтверждена клиентами (с расхождениями), текущая — отмечена и ждёт.
+       scene: дата → ответ клиента, по ней видно каждый тип вопроса. */
+    var today = C.day(new Date()), P1 = C.lastClosed(today);
+    function les(tag, days, scene, extra) {
+      var out = [], d = P1.from, k = 0;
+      while (d < C.addDays(today, 10) && k < 24) {
+        if (days.indexOf(C.weekday(d)) >= 0) {
+          var past = d < today, inP1 = C.inPeriod(d, P1), sc = (scene || {})[k] || {};
+          var l = { id: tag + k, month: 1, idx: k + 1, topic: ['Present Simple', 'Артикли', 'Числа и время', 'Мой день',
+                    'Семья', 'Еда', 'Город', 'Past Simple'][k % 8], plan_date: d,
+                    taught: past && !sc.notTaught, taught_on: past && !sc.notTaught ? d : null,
+                    taught_at: past && !sc.notTaught ? d + 'T19:10:00+05:00' : null,
+                    client_answer: inP1 && !(scene || {}).silent ? (sc.a || 'yes') : null,
+                    client_quality: inP1 && !(scene || {}).silent && (sc.a || 'yes') === 'yes' ? (sc.q || 5) : null,
+                    client_note: sc.note || null, review: null };
+          out.push(l); k++;
+        }
+        d = C.addDays(d, 1);
+      }
+      (extra || []).forEach(function (x, i) {
+        out.push({ id: tag + 'x' + i, month: 1, idx: 30 + i, topic: 'Доп. занятие', plan_date: null,
+                   taught: true, taught_on: x, taught_at: C.addDays(today, -1) + 'T22:40:00+05:00',
+                   client_answer: null, client_quality: null, client_note: null, review: null });
+      });
+      out.forEach(function (l) { l.done = C.payable(l); l.done_at = l.done ? l.taught_at : null; });
+      return out;
+    }
+    function req(card, answered) {
+      return { id: 'r-' + card, token: 'demo-' + card, card_id: card, period_from: P1.from, period_to: P1.to,
+               created_at: C.addDays(today, -3) + 'T10:00:00+05:00', sent_at: C.addDays(today, -3) + 'T10:00:00+05:00',
+               reminded_at: answered ? null : C.addDays(today, -1) + 'T10:00:00+05:00',
+               answered_at: answered ? C.addDays(today, -2) + 'T12:30:00+05:00' : null };
+    }
+    /* суббота первой половины — «урок не по графику» у Данияра (у него только чт) */
+    var sat = P1.from; while (C.weekday(sat) !== 'sat') sat = C.addDays(sat, 1);
+    var now = new Date().toISOString();
+    var data = {
+      isAdmin: true,
+      students: [
+        { id: 'a', phone: '77011234567', name: 'Аяжан',  level: 'beginner',   updated_at: now, created_at: '2026-09-01T10:00:00Z' },
+        { id: 'b', phone: '77029876543', name: 'Ернар',  level: 'elementary', updated_at: '2026-09-14T10:00:00Z', created_at: '2026-09-01T10:00:00Z' },
+        { id: 'v', phone: '77014445566', name: 'Данияр', level: 'beginner',   updated_at: '2026-09-11T10:00:00Z', created_at: '2026-09-01T10:00:00Z' },
+        /* двое ждут учителя: одна заведена вчера, другой — четыре дня назад */
+        { id: 'w1', phone: '77051112233', name: 'Томирис', level: null, updated_at: now,
+          created_at: new Date(Date.now() - 20 * 36e5).toISOString() },
+        { id: 'w2', phone: '77053334455', name: 'Нурбол',  level: 'beginner', updated_at: now,
+          created_at: new Date(Date.now() - 96 * 36e5).toISOString() }
+      ],
+      progress: [
+        { student_id: 'a', lesson: 'b1', step: 'read',  updated_at: now },
+        { student_id: 'a', lesson: 'b1', step: 'task',  right_count: 5, total_count: 6, updated_at: now },
+        { student_id: 'a', lesson: 'b1', step: 'words', updated_at: now },
+        { student_id: 'a', lesson: 'b2', step: 'read',  updated_at: now },
+        { student_id: 'b', lesson: 'e13', step: 'read', updated_at: '2026-09-14T10:00:00Z' }
+      ],
+      games: [{ student_id: 'a', game: 'flappy_english', created_at: now }],
+      errors: [],
+      teachers: [
+        { id: 't1', name: 'Айгерім Нұрлан', phone: '77015550000', rate: 1150,
+          bio: 'Десять лет в школе, пять — онлайн.',
+          slots: 'mon@16:00,mon@17:00,mon@18:00,mon@19:00,tue@16:00,tue@17:00,tue@18:00,tue@19:00,' +
+                 'wed@16:00,wed@17:00,wed@18:00,wed@19:00,thu@16:00,thu@17:00,thu@18:00,thu@19:00,' +
+                 'fri@16:00,fri@17:00,fri@18:00,fri@19:00' },
+        { id: 't2', name: 'Мадина Қайрат', phone: '77017778899', rate: 1150,
+          bio: 'Ведёт разговорные группы по выходным.',
+          slots: 'sat@11:00,sat@12:00,sun@11:00,sun@12:00' }
+      ],
+      cards: [
+        { id: 'c1', teacher_id: 't1', name: 'Аяжан', phone: '77011234567', age: 14, city: 'Алматы',
+          format: 'individual', days: 'mon,wed,fri', time_at: '18:00', archived: false,
+          rate: null, months: 1, per_month: 12, pay_plan: 'month', paid_until: C.addDays(today, 12),
+          lessons: les('a', ['mon','wed','fri'], { 2: { a: 'no', note: 'Урока не было: перенесли и не провели.' } }) },
+        { id: 'c2', teacher_id: 't1', name: 'Ернар', phone: '77029876543', age: 11, city: 'Астана',
+          format: 'group', days: 'tue,thu', time_at: '17:00', archived: false,
+          rate: null, months: 1, per_month: 12, pay_plan: 'two_weeks', paid_until: C.addDays(today, -2),
+          lessons: les('b', ['tue','thu'], { silent: true }) },
+        { id: 'c3', teacher_id: 't1', name: 'Данияр', phone: '77014445566', age: 16, city: 'Шымкент',
+          format: 'individual', days: 'thu', time_at: '20:00', archived: false,
+          rate: 2000, months: 1, per_month: 12, pay_plan: 'lessons8', paid_until: C.addDays(today, 2),
+          lessons: les('c', ['thu'], { 1: { a: 'unsure', note: 'Не помню, был ли урок — уезжали.' } }, [sat]) },
+        { id: 'c4', teacher_id: 't2', name: 'Әсем', phone: '77013332211', age: 12, city: 'Алматы',
+          format: 'group', days: 'sat', time_at: '11:00', archived: false,
+          rate: null, months: 1, per_month: 12, pay_plan: 'month', paid_until: C.addDays(today, 20),
+          lessons: les('d', ['sat'], { 0: { a: 'yes', notTaught: true }, 1: { a: 'yes', q: 2, note: 'Полурока шумно, плохо слышно.' } }) }
+      ]
+    };
+    data.requests = [req('c1', true), req('c2', false), req('c3', true), req('c4', true)];
+
+    DB.init = function () { return true; };
+    DB.userId = 'admin';
+    DB.signOut = function () { location.search = ''; };
+    DB.listAll = function () { return Promise.resolve(data); };
+    DB.allowed = {
+      list: function () { return Promise.resolve([]); },
+      add:  function () { return Promise.resolve(); },
+      remove: function () { return Promise.resolve(); }
+    };
+    /* Всё, что дашборд пишет в карточки, уроки и графики, ложится в
+       память вкладки тем же путём, каким ушло бы в PostgREST: видно, как
+       ученик уходит из «без учителя», как карточка переезжает к другому
+       учителю и как растёт сетка. Понимает ровно те запросы, что шлёт
+       дашборд: POST, PATCH и DELETE по id=eq. / id=in., GET уроков. */
+    var seq = 0;
+    function lessonsAll() {
+      var out = [];
+      data.cards.forEach(function (c) { (c.lessons || []).forEach(function (l) { l.card_id = c.id; out.push(l); }); });
+      return out;
+    }
+    function match(q) {
+      var m = /[?&]id=eq\.([^&]+)/.exec(q), n = /[?&]id=in\.\(([^)]*)\)/.exec(q);
+      if (m) { var one = decodeURIComponent(m[1]); return function (x) { return x.id === one; }; }
+      if (n) { var many = n[1].split(',').map(decodeURIComponent); return function (x) { return many.indexOf(x.id) >= 0; }; }
+      return function () { return false; };
+    }
+    DB.rest = function (path, opt) {
+      opt = opt || {};
+      var table = path.split('?')[0], q = path.slice(table.length), how = opt.method || 'GET';
+      var list = table === 'en_teacher_students' ? data.cards
+               : table === 'en_teachers' ? data.teachers
+               : table === 'en_confirm_requests' ? data.requests : null;
+      if (table === 'en_teacher_lessons') {
+        if (how === 'POST') {
+          var rows = [].concat(opt.body);
+          var dup = rows.some(function (l) {
+            return lessonsAll().some(function (x) { return x.card_id === l.card_id && x.month === l.month && x.idx === l.idx; });
+          });
+          if (dup) return Promise.reject(new Error('duplicate key value violates unique constraint'));
+          rows.forEach(function (l) {
+            var c = data.cards.filter(function (x) { return x.id === l.card_id; })[0];
+            if (c) (c.lessons = c.lessons || []).push(Object.assign({ id: 'l' + (++seq), done: false, done_at: null }, l));
+          });
+          return Promise.resolve([]);
+        }
+        if (how === 'DELETE') {
+          var gone = match(q);
+          data.cards.forEach(function (c) { c.lessons = (c.lessons || []).filter(function (l) { return !gone(l); }); });
+          return Promise.resolve([]);
+        }
+        var card = (/card_id=eq\.([^&]+)/.exec(q) || [])[1];
+        return Promise.resolve(lessonsAll().filter(function (l) {
+          return (!card || l.card_id === decodeURIComponent(card)) && (q.indexOf('done=is.false') < 0 || !l.done);
+        }));
+      }
+      if (!list) return Promise.resolve([]);
+      if (how === 'POST') {
+        var row = Object.assign({ id: 'new' + (++seq), archived: false, lessons: [] }, opt.body);
+        list.push(row);
+        return Promise.resolve([row]);
+      }
+      var hit = match(q);
+      if (how === 'PATCH') list.forEach(function (x) { if (hit(x)) Object.assign(x, opt.body); });
+      if (how === 'DELETE') for (var i = list.length - 1; i >= 0; i--) if (hit(list[i])) list.splice(i, 1);
+      return Promise.resolve([]);
+    };
+    DB.rpc = function (name, body) {
+      /* Решения админа и запросы — по тем же правилам, что функции в базе. */
+      if (name === 'en_control_resolve') {
+        lessonsAll().forEach(function (l) {
+          if (body.p_ids.indexOf(l.id) < 0) return;
+          l.review = body.p_how === 'reopen' ? null : body.p_how;
+          if (body.p_how === 'paid' && !l.taught) { l.taught = true; l.taught_on = l.plan_date || C.day(new Date()); }
+          l.done = C.payable(l); l.done_at = l.done ? new Date().toISOString() : null;
+        });
+        return Promise.resolve('Готово');
+      }
+      if (name === 'en_confirm_open') {
+        var made = 0;
+        data.cards.forEach(function (c) {
+          if (c.archived || !c.teacher_id) return;
+          if (data.requests.some(function (r) { return r.card_id === c.id && r.period_from === body.p_from; })) return;
+          if (!(c.lessons || []).some(function (l) { return C.inPeriod(C.dateOf(l), C.period(body.p_from)); })) return;
+          data.requests.push({ id: 'r' + (++seq), token: 'demo' + seq, card_id: c.id, period_from: body.p_from,
+                               period_to: body.p_to, created_at: new Date().toISOString() });
+          made++;
+        });
+        return Promise.resolve(made);
+      }
+      if (name === 'en_edit_student') {
+        var st = data.students.filter(function (x) { return x.id === body.p_id; })[0];
+        var ph = DB.normPhone(body.p_phone);
+        if (st) {
+          data.cards.forEach(function (c) { if (c.phone === st.phone) c.phone = ph; });
+          st.name = body.p_name; st.phone = ph; st.level = body.p_level;
+        }
+        return Promise.resolve('Готово: тестовый режим, в базу ничего не ушло');
+      }
+      return Promise.resolve('Готово');
+    };
+    DB.addStudent = function () { return Promise.resolve('Готово: тестовый режим, в базу ничего не ушло'); };
+    DB.resetCode  = function () { return Promise.resolve('Готово: тестовый режим'); };
+    start();
+  }
+
+  if (/demo=/.test(typeof location === 'undefined' ? '' : location.search)) demo();
+  else if (DB.init()) start();
+  else auth('');
+})();
+</script>
+</body>
+</html>
