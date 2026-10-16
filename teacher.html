@@ -16,12 +16,13 @@
 <script src="config.js"></script>
 <script src="app/course.js"></script>
 <script src="app/control.js"></script>
+<script src="app/school.js"></script>
 <script src="app/data.js"></script>
 <script src="app/eco.js"></script>
 <script>
 (function () {
   'use strict';
-  var C = CTRL, D = DEMO;
+  var C = CTRL, D = DEMO, SC = SCHOOL;
   E.shell('teacher');
 
   var m = /[?&]t=(t\d)/.exec(location.search);
@@ -44,12 +45,19 @@
       '" aria-pressed="' + !!l.taught + '" aria-label="Урок проведён" title="' +
       (l.taught ? 'Снять отметку' : 'Отметить: урок проведён') + '">' + E.ICON.check + '</button>';
   }
-  function lessonRow(r) {
+  /* Домашка в платформе — рядом с уроком: учитель видит её до следующего. */
+  function hwMark(s) {
+    if (!s || !s.program || !s.held) return '';
+    if (s.hw === true) return '<b style="color:var(--ok)">✓ домашка' + (s.hwScore != null ? ' ' + s.hwScore + '%' : '') + '</b> · ';
+    if (s.hw === false) return '<b style="color:var(--accent)">домашка не сделана</b> · ';
+    return 'домашка до ' + E.short(s.hwDue) + ' · ';
+  }
+  function lessonRow(r, ses) {
     var future = r.date > D.TODAY;
     return '<div class="e-les' + (future ? ' future' : '') + '">' + check(r) +
       '<span class="d"><b>' + E.short(r.date) + '</b>' + E.dayShort(r.date) + '</span>' +
       '<span class="tp">' + E.esc(r.l.topic || 'тема не задана') +
-        '<small>' + E.esc(r.l.homework || '') + '</small></span>' +
+        '<small>' + hwMark(ses && ses[r.l.id]) + E.esc(r.l.homework || '') + '</small></span>' +
       (future ? (r.l.course_id ? '<button class="e-btn sm sec" data-mat="' + r.l.id + '">Материал урока</button>' : '')
               : E.chip(r.status)) +
     '</div>';
@@ -58,7 +66,8 @@
   function student(an, card) {
     var rows = C.forCard(an, card.id).filter(function (r) { return r.date; })
       .sort(function (a, b) { return a.date.localeCompare(b.date); });
-    var lv = D.levelOf(card), next = D.nextLesson(D.load(), card.id);
+    var lv = D.levelOf(card), next = D.nextLesson(D.load(), card.id), f = D.facts(card.id), ses = {};
+    f.sessions.forEach(function (x) { ses[x.l.id] = x; });
     var n = next && next.course_id ? +next.course_id.slice(1) : 14;
     var periods = [D.P1, D.P2].map(function (p) {
       var list = rows.filter(function (r) { return r.period.key === p.key && r.date <= C.addDays(D.TODAY, 7); });
@@ -66,7 +75,7 @@
       list = list.filter(function (r) { return r.date <= D.TODAY; }).concat(upcoming);
       if (!list.length) return '';
       return '<div class="e-period">' + C.periodLabel(p, 'ru') + ' · ' + (C.isClosed(p, D.TODAY) ? 'закрыт' : 'идёт') + '</div>' +
-        list.map(lessonRow).join('');
+        list.map(function (r) { return lessonRow(r, ses); }).join('');
     }).join('');
     return '<section class="e-card" id="c-' + card.id + '">' +
       '<div class="e-card-h">' + E.who(card.name, E.dayNames(card.days) + ', ' + card.time_at + ' · ' + card.goal) +
@@ -75,6 +84,9 @@
         '<div class="e-prog" style="min-width:150px"><div class="e-bar" style="height:6px"><i class="wait" style="opacity:1;width:' +
           Math.round((n - 1) / 14 * 100) + '%"></i></div><span>урок ' + n + ' из 14</span></div></div>' +
       (card.note ? '<p class="e-small" style="margin:-4px 0 6px">' + E.esc(card.note) + '</p>' : '') +
+      '<p class="e-small" style="margin:-2px 0 6px">В платформе: подготовка к уроку ' + f.prep.done + ' из ' + f.prep.total + ', домашка ' +
+        f.homework.done + ' из ' + f.homework.total + (f.score != null ? ', результат заданий ' + f.score + '%' : '') +
+        '. <a class="e-link" href="student.html?s=' + card.id + '">Досье →</a></p>' +
       periods + '</section>';
   }
 
@@ -83,13 +95,16 @@
     var soon = an.rows.filter(function (r) { return r.card.teacher_id === S.teacher && r.date > D.TODAY; })
       .sort(function (a, b) { return a.date.localeCompare(b.date) || a.card.time_at.localeCompare(b.card.time_at); })[0];
     return '<section class="e-card"><div class="e-card-h"><h2>Сегодня, понедельник 19 октября</h2>' +
-        '<span class="sub">Урок готов заранее: тема, правило, слова и задания из курса школы.</span></div>' +
+        '<span class="sub">Урок готов заранее: тема, правило, слова и задания из курса школы. Видно, кто посмотрел видео до урока.</span></div>' +
       (list.length ? list.map(function (r) {
         var L = D.courseLesson(r.card, +String(r.l.course_id || 'x1').slice(1));
+        var prep = SC.prepared(r.l, r.card, D.load().activity);
         return '<div class="e-li" style="padding:12px 0">' +
           '<span class="e-who"><span class="e-ava">' + E.esc(r.card.time_at) .slice(0, 2) + '</span><span style="min-width:0"><b>' +
             E.esc(r.card.name) + ' · ' + r.card.time_at + '</b><small>' + E.esc(r.l.topic) + '</small></span></span>' +
-          (r.l.taught ? E.chip(r.status) : '') +
+          (r.l.taught ? E.chip(r.status) : prep === true ? '<span class="e-chip ok">видео просмотрено</span>'
+            : prep === false ? '<span class="e-chip warn">видео не открыто</span>' : '') +
+          (!r.l.taught && prep === false ? '<p class="e-small" style="grid-column:1/-1;margin:0;padding-left:49px">К уроку не готовился — начните с правила из мультфильма.</p>' : '') +
           '<div class="e-acts" style="padding-left:49px">' +
             (L ? '<button class="e-btn sm sec" data-mat="' + r.l.id + '">Материал урока</button>' : '') +
             (r.l.taught ? '' : '<button class="e-btn sm ok" data-teach="' + r.l.id + '" data-on="1">' + E.ICON.check + ' Урок проведён</button>') +

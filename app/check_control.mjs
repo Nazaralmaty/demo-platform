@@ -24,7 +24,7 @@ function world() {
   ctx.window = ctx; ctx.globalThis = ctx;
   vm.createContext(ctx);
   vm.runInContext('window.BRAND = { name: "GSC Study" };', ctx);
-  for (const f of ['app/course.js', 'app/control.js', 'app/data.js']) {
+  for (const f of ['app/course.js', 'app/control.js', 'app/school.js', 'app/data.js']) {
     vm.runInContext(fs.readFileSync(f, 'utf8'), ctx, { filename: f });
   }
   return ctx;
@@ -81,6 +81,8 @@ assert.equal(C.status({ taught: true, client_answer: 'yes' }, { flags: ['offday'
 /* ── демо-мир ─────────────────────────────────────────────────────────── */
 const st = D.load();
 assert.equal(st.cards.length, 7, 'семь учеников');
+assert.equal(st.lessons.find((l) => l.id === 's7-2026-10-13').taught, false, 'урок Мадины 13-го не состоялся');
+assert.equal(C.status(st.lessons.find((l) => l.id === 's7-2026-10-13')), 'cancelled', 'и клиент это подтвердил');
 assert.equal(st.teachers.length, 3, 'три учителя');
 
 /* Каждый урок — в свой день недели по графику, кроме двух подставных. */
@@ -122,16 +124,17 @@ function invariants(a) {
 }
 
 /* Деньги первой половины октября, посчитанные руками:
-   к выплате 5750 + 0 + 5750 + 5750 + 4600 + 9000 + 4800 = 35 650;
+   к выплате 5750 + 0 + 5750 + 5750 + 4600 + 9000 + 3600 = 34 450
+   (у Мадины 13-го урока не было — болела, учитель его и не отмечал);
    на проверке 1150 + 7000 + 2300 + 0 + 1150 + 3000 + 0 = 14 600;
-   заявлено учителями 49 100 (призрак Дианы не заявлен — его не отметили). */
+   заявлено учителями 47 900 (призрак Дианы не заявлен — его не отметили). */
 let m1 = invariants({ rows: C.forPeriod(an, D.P1) });
-same([m1.payable, m1.review, m1.claimed, m1.awaiting], [35650, 14600, 49100, 0], 'деньги 1–15 октября');
+same([m1.payable, m1.review, m1.claimed, m1.awaiting], [34450, 14600, 47900, 0], 'деньги 1–15 октября');
 const m2 = C.money(C.forPeriod(an, D.P2));
 same([m2.awaiting, m2.payable], [4950, 0], 'вторая половина: всё ждёт клиента');
 
 const pr = C.payroll(an, D.P1, st.teachers);
-same(pr.map((x) => x.money.payable), [11500, 15150, 9000], 'ведомость по учителям');
+same(pr.map((x) => x.money.payable), [11500, 13950, 9000], 'ведомость по учителям');
 assert.equal(pr.reduce((a, x) => a + x.money.payable, 0), m1.payable, 'ведомость сходится со школой');
 
 /* ── действия ─────────────────────────────────────────────────────────── */
@@ -153,7 +156,7 @@ assert.equal(D.act.answer(tk, Object.fromEntries(pay.lessons.map((l) => [l.id, {
 an = D.analyze();
 assert.ok(!an.tickets.some((t) => t.kind === 'silent'), 'молчание ушло');
 m1 = invariants({ rows: C.forPeriod(an, D.P1) });
-assert.equal(m1.payable, 35650 + 7000, 'ответ Тимура ушёл в выплату');
+assert.equal(m1.payable, 34450 + 7000, 'ответ Тимура ушёл в выплату');
 
 /* Спор разбираем в пользу урока, «призрака» засчитываем. */
 const dispute = an.tickets.find((t) => t.kind === 'dispute');
@@ -166,7 +169,7 @@ assert.ok(gl.taught && gl.review === 'paid', 'засчитанный призр�
 for (const t of D.analyze().tickets.filter((x) => x.kind === 'suspect')) D.act.resolve(t.id, 'void');
 an = D.analyze();
 m1 = invariants({ rows: C.forPeriod(an, D.P1) });
-assert.equal(m1.payable, 35650 + 7000 + 1150 + 1150, 'спор и призрак — к выплате');
+assert.equal(m1.payable, 34450 + 7000 + 1150 + 1150, 'спор и призрак — к выплате');
 assert.equal(m1.voided, 3000, 'две подставные отметки сняты');
 assert.equal(kinds(an), 'lowq,unsure', 'в очереди осталось два вопроса');
 
@@ -196,4 +199,4 @@ assert.equal(C.waLink('8 701 123 45 67', 'a b'), 'https://wa.me/77011234567?text
 D.reset();
 assert.equal(kinds(D.analyze()), 'dispute,ghost,lowq,silent,suspect,suspect,unsure', 'сброс демо');
 
-console.log('control ok: 7 типов очереди, 1–15 окт: 35 650 ₸ к выплате, 14 600 на проверке, ведомость сходится, действия и сброс работают');
+console.log('control ok: 7 типов очереди, 1–15 окт: 34 450 ₸ к выплате, 14 600 на проверке, ведомость сходится, действия и сброс работают');

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#135685">
+<title>GSC Study · единая методика</title>
+<link rel="icon" href="assets/brand-logo.png">
+<link rel="stylesheet" href="app/style.css">
+<link rel="stylesheet" href="app/brand.css">
+<link rel="stylesheet" href="app/eco.css">
+<style>
+  .m-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;counter-reset:st}
+  .m-step{background:var(--bg);border-radius:var(--e-r-sm);padding:14px 16px 16px;display:grid;gap:6px;align-content:start;position:relative}
+  .m-step .k{font-family:var(--head);font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .m-step b{font-family:var(--head);font-size:16px;line-height:1.25}
+  .m-step p{margin:0;font-size:13.5px;line-height:1.5;color:var(--muted)}
+  .m-step .m-who{font-size:12.5px;font-weight:700;color:var(--navy)}
+  .m-step.core{background:var(--navy);color:var(--on-navy)} .m-step.core p,.m-step.core .k,.m-step.core .m-who{color:var(--on-navy);opacity:.88}
+  @media (max-width:900px){ .m-steps{grid-template-columns:repeat(2,minmax(0,1fr))} }
+  @media (max-width:440px){ .m-steps{grid-template-columns:minmax(0,1fr)} }
+  .m-lib{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
+  .m-lib b{font-family:var(--head);font-size:18px;color:var(--ink);margin-right:4px;font-variant-numeric:tabular-nums}
+  .m-pct{font-weight:700;font-variant-numeric:tabular-nums}
+  .m-pct.ok{color:var(--ok)} .m-pct.warn{color:var(--warn)} .m-pct.bad{color:var(--accent)} .m-pct.mute{color:var(--muted)}
+</style>
+</head>
+<body class="eco">
+<main class="e-page" id="root"></main>
+
+<script src="config.js"></script>
+<script src="app/course.js"></script>
+<script src="app/control.js"></script>
+<script src="app/school.js"></script>
+<script src="app/data.js"></script>
+<script src="app/eco.js"></script>
+<script>
+(function () {
+  'use strict';
+  var C = CTRL, D = DEMO, S = SCHOOL;
+  E.shell('method');
+
+  /* Содержание курса — из того же файла, что открывает ученик. */
+  var LIB = (function () {
+    var lv = (window.COURSE || {}).levels || [], V = window.VIDEOS || {}, r = { levels: lv.length, lessons: 0, videos: 0, words: 0, tasks: 0, texts: 0 };
+    lv.forEach(function (x) {
+      x.lessons.forEach(function (l) {
+        r.lessons++; r.words += l.words.length; r.tasks += l.tasks.length; if (l.text) r.texts++;
+        r.videos += (V[l.id] || []).filter(Boolean).length;
+      });
+    });
+    return r;
+  })();
+
+  function tone(p, good, bad) { return p == null ? 'mute' : p >= good ? 'ok' : p < bad ? 'bad' : 'warn'; }
+  function pct(p, good, bad) { return '<span class="m-pct ' + tone(p, good, bad) + '">' + (p == null ? '—' : p + '%') + '</span>'; }
+  function sum(list, fn) { return list.reduce(function (a, x) { return a + fn(x); }, 0); }
+  function share(list, key) {
+    var done = sum(list, function (f) { return f[key].done; }), total = sum(list, function (f) { return f[key].total; });
+    return { done: done, total: total, pct: total ? Math.round(done / total * 100) : null };
+  }
+  function wa(phone, text) { return 'https://wa.me/' + String(phone).replace(/\D/g, '') + '?text=' + encodeURIComponent(text); }
+
+  function structure(policy) {
+    return '<section class="e-card"><div class="e-card-h"><h2>Как идёт каждый урок</h2>' +
+        '<span class="sub">Одна схема для всех учителей и всех учеников. Один урок курса — две встречи с учителем: правило и слова, потом практика.</span></div>' +
+      '<div class="m-steps">' +
+        '<div class="m-step"><span class="k">1 · дома, до урока</span><b>Видеоурок-мультфильм</b>' +
+          '<p>Правило урока в коротком мультфильме. Ученик приходит уже с темой в голове.</p><span class="m-who">Учитель видит, кто посмотрел</span></div>' +
+        '<div class="m-step core"><span class="k">2 · урок с учителем</span><b>Тема строго из курса</b>' +
+          '<p>Учитель ведёт по готовому уроку: правило, примеры, речь. Тему в журнал подставляет платформа.</p><span class="m-who">Вне программы — отметка админу</span></div>' +
+        '<div class="m-step"><span class="k">3 · дома, ' + policy.hw_days + ' дня</span><b>Слова, чтение, задания</b>' +
+          '<p>Карточки слов, текст урока и задания с тапом. Платформа сама проверяет и считает процент.</p><span class="m-who">Не сделал — видно сразу</span></div>' +
+        '<div class="m-step"><span class="k">4 · раз в 2 недели</span><b>Клиент подтверждает</b>' +
+          '<p>Родитель отмечает по ссылке, какие уроки были. Зарплата учителя — только за подтверждённые.</p><span class="m-who">Спорное — администратору</span></div>' +
+      '</div>' +
+      '<div class="m-lib"><span><b>' + LIB.levels + '</b>уровня</span><span><b>' + LIB.lessons + '</b>готовых уроков</span>' +
+        '<span><b>' + LIB.videos + '</b>видеоуроков</span><span><b>' + LIB.words + '</b>слов</span><span><b>' + LIB.tasks + '</b>заданий</span>' +
+        '<span><b>' + LIB.texts + '</b>текстов</span><a class="e-link" href="index.html">Открыть платформу ученика →</a></div>' +
+    '</section>';
+  }
+
+  function students(F) {
+    return '<section class="e-card flush"><div class="e-card-h"><h2>Ученики</h2>' +
+        '<span class="sub">Готовился — смотрел видео до урока. Домашка — сделал в платформе за срок. Нажмите на строку — досье.</span></div>' +
+      '<table class="e-table"><thead><tr><th>Ученик</th><th class="num">Готовился</th><th class="num">Домашка</th><th class="num">Результат</th>' +
+        '<th class="num">Дней в платформе</th><th>Итог</th></tr></thead><tbody>' +
+      F.map(function (f) {
+        var t = D.teacherOf(D.load(), f.card), lv = D.levelOf(f.card), v = S.verdict(f);
+        return '<tr class="click" data-href="student.html?s=' + f.card.id + '"><td class="lead">' +
+            E.who(f.card.name, (lv ? lv.code : f.card.level) + ' · ' + t.name) + '</td>' +
+          '<td class="num" data-l="Готовился к уроку"><span>' + pct(S.rate(f.prep), 70, 40) + ' <span class="e-small">' + f.prep.done + '/' + f.prep.total + '</span></span></td>' +
+          '<td class="num" data-l="Домашка в платформе"><span>' + pct(S.rate(f.homework), 70, 40) + ' <span class="e-small">' + f.homework.done + '/' + f.homework.total + '</span></span></td>' +
+          '<td class="num" data-l="Результат заданий">' + pct(f.score, 70, 50) + '</td>' +
+          '<td class="num" data-l="Дней за 2 недели">' + f.activeDays14 + '</td>' +
+          '<td data-l="Итог"><span class="e-chip ' + v[1] + '">' + v[0] + '</span></td></tr>';
+      }).join('') + '</tbody></table></section>';
+  }
+
+  function teachers(st, F) {
+    return '<section class="e-card flush"><div class="e-card-h"><h2>Учителя</h2>' +
+        '<span class="sub">По программе — доля проведённых уроков, которые шли по курсу. Остальное — как учатся их ученики.</span></div>' +
+      '<table class="e-table"><thead><tr><th>Учитель</th><th class="num">Уроков</th><th class="num">По программе</th>' +
+        '<th class="num">Ученики готовятся</th><th class="num">Домашка</th></tr></thead><tbody>' +
+      st.teachers.map(function (t) {
+        var mine = F.filter(function (f) { return f.card.teacher_id === t.id; });
+        var on = sum(mine, function (f) { return f.program.on; }), total = sum(mine, function (f) { return f.program.total; });
+        var p = share(mine, 'prep'), h = share(mine, 'homework');
+        return '<tr><td class="lead">' + E.who(t.name, E.plural(mine.length, 'ученик', 'ученика', 'учеников') + ': ' +
+            mine.map(function (f) { return f.card.name; }).join(', ')) + '</td>' +
+          '<td class="num" data-l="Уроков проведено">' + total + '</td>' +
+          '<td class="num" data-l="По программе">' + pct(total ? Math.round(on / total * 100) : null, 95, 80) + '</td>' +
+          '<td class="num" data-l="Ученики готовятся">' + pct(p.pct, 70, 40) + '</td>' +
+          '<td class="num" data-l="Домашка">' + pct(h.pct, 70, 40) + '</td></tr>';
+      }).join('') + '</tbody></table></section>';
+  }
+
+  /* Несколько уроков вне программы у одного ученика — одна карточка. */
+  function grouped(dev) {
+    var order = { nohw: 0, noprep: 1, offprog: 2 }, seen = {};
+    return dev.filter(function (d) {
+      if (d.kind !== 'offprog') return true;
+      var k = d.f.card.id;
+      if (seen[k]) { seen[k].dates.push(d.date); return false; }
+      seen[k] = { kind: d.kind, f: d.f, date: d.date, text: d.text, dates: [d.date] }; return true;
+    }).map(function (d) { return d.kind === 'offprog' ? seen[d.f.card.id] : d; })
+      .sort(function (a, b) { return order[a.kind] - order[b.kind]; });
+  }
+
+  function deviations(st, dev) {
+    return '<section class="e-card"><div class="e-card-h"><h2>Отступления от методики</h2><span class="sp"></span>' +
+        (dev.length ? '<span class="e-chip warn">' + dev.length + '</span>' : '') +
+        '<span class="sub">Платформа замечает сама. Администратор пишет учителю или родителю, пока не поздно.</span></div>' +
+      (dev.length ? '<div class="e-tickets">' + dev.map(function (d) {
+        var f = d.f, c = f.card, t = D.teacherOf(st, c), g = c.contract && c.contract.guarantee;
+        var head, body, btn;
+        if (d.kind === 'nohw') {
+          head = 'Не делает домашку';
+          body = '<b>' + E.plural(d.count, 'урок', 'урока', 'уроков') + ' подряд</b> без заданий в платформе. ' +
+            (g ? 'Гарантия «' + E.esc(g) + '» под угрозой — ученик не выполняет условия.' : 'Учитель ведёт урок, а закрепления нет.');
+          btn = '<a class="e-btn wa sm" target="_blank" rel="noopener" href="' + wa(c.phone, 'Здравствуйте! Это ' + (window.BRAND || {}).name +
+            '. ' + c.name + ' не делает задания в платформе после уроков — уже ' + E.plural(d.count, 'урок', 'урока', 'уроков') +
+            ' подряд. Без домашки результат не придёт. Давайте договоримся: 15 минут после каждого урока, мы напомним.') + '">' + E.ICON.wa + 'Написать родителю</a>';
+        } else if (d.kind === 'noprep') {
+          head = 'Не готовится к уроку';
+          body = 'Видео до урока — только в <b>' + d.value + '%</b> случаев. Учитель тратит урок на то, что есть в мультфильме.';
+          btn = '';
+        } else {
+          var dl = d.dates.map(E.short).join(', ');
+          head = d.dates.length > 1 ? E.plural(d.dates.length, 'урок', 'урока', 'уроков') + ' вне программы' : 'Урок вне программы';
+          body = '<b>' + dl + '</b> — «' + E.esc(d.text) + '». Тема не из курса: урок не двигает ученика по программе.';
+          btn = '<a class="e-btn wa sm" target="_blank" rel="noopener" href="' + wa(t.phone, t.name.split(' ')[0] + ', добрый день! ' + (d.dates.length > 1 ? 'Уроки' : 'Урок') + ' с ' + c.name +
+            ' ' + dl + (d.dates.length > 1 ? ' прошли' : ' прошёл') + ' вне программы («' + d.text + '»). По методике школы уроки идут по курсу платформы — ' +
+            'вернитесь, пожалуйста, к программе на следующем уроке.') + '">' + E.ICON.wa + 'Написать учителю</a>';
+        }
+        return '<div class="e-ticket ' + (d.kind === 'nohw' ? 'bad' : '') + '"><div class="hd"><span class="nm"><b>' + E.esc(c.name) + '</b>' +
+            E.esc(t.name) + '</span><span class="sum" style="font-size:13px">' + head + '</span></div>' +
+          '<p>' + body + '</p><div class="e-acts">' + btn + '<a class="e-btn sec sm" href="student.html?s=' + c.id + '">Досье →</a></div></div>';
+      }).join('') + '</div>'
+      : '<div class="e-empty"><b>Всё по методике</b>Все уроки по курсу, ученики готовятся и делают домашку.</div>') +
+    '</section>';
+  }
+
+  function draw() {
+    var st = D.load(), F = D.allFacts(), dev = grouped(S.methodology(F));
+    var on = sum(F, function (f) { return f.program.on; }), held = sum(F, function (f) { return f.program.total; });
+    var p = share(F, 'prep'), h = share(F, 'homework');
+    var good = F.filter(function (f) { return S.verdict(f)[1] === 'ok'; }).length;
+    var onPct = held ? Math.round(on / held * 100) : null;
+    return '<div class="e-head"><div><span class="e-eyebrow">Единая методика</span><h1>Один формат урока для всей школы</h1>' +
+        '<p>Платформа — не дополнение к урокам, а их обязательная часть: ученик готовится и закрепляет в ней, учитель ведёт по ней. ' +
+        'Поэтому видно, кто учит по методике и кто учится сам, — по фактам, а не по ощущениям.</p></div></div>' +
+      '<div class="e-kpis">' +
+        '<div class="e-kpi ' + (onPct >= 95 ? 'ok' : 'warn') + '"><span>Уроки по программе</span><b>' + (onPct == null ? '—' : onPct + '%') + '</b><small>' + on + ' из ' + held + ' проведённых</small></div>' +
+        '<div class="e-kpi ' + (p.pct < 70 ? 'warn' : '') + '"><span>Готовятся к уроку</span><b>' + (p.pct == null ? '—' : p.pct + '%') + '</b><small>' + p.done + ' из ' + p.total + ' — видео до урока</small></div>' +
+        '<div class="e-kpi ' + (h.pct < 70 ? 'warn' : '') + '"><span>Домашка в платформе</span><b>' + (h.pct == null ? '—' : h.pct + '%') + '</b><small>' + h.done + ' из ' + h.total + ' за срок</small></div>' +
+        '<div class="e-kpi navy"><span>Учатся по методике</span><b>' + good + ' из ' + F.length + '</b><small>' + E.plural(dev.length, 'отступление', 'отступления', 'отступлений') + '</small></div>' +
+      '</div>' +
+      '<div class="e-stack">' + structure(st.policy) + students(F) +
+        '<div class="e-grid two">' + deviations(st, dev) + teachers(st, F) + '</div>' +
+      '</div>';
+  }
+  draw.wire = function (root) {
+    E.on(root, 'tr[data-href]', function (tr) { location.href = tr.getAttribute('data-href'); });
+  };
+  E.mount(document.getElementById('root'), draw);
+})();
+</script>
+</body>
+</html>

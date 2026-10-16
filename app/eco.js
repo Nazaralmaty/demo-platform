@@ -68,11 +68,13 @@
   /* ── шапка ──────────────────────────────────────────────────────────── */
   var NAV = [
     ['dashboard', 'dashboard.html', 'Обзор'],
-    ['control', 'proverka.html', 'Контроль уроков'],
-    ['teacher', 'teacher.html', 'Кабинет учителя'],
+    ['method', 'metodika.html', 'Методика'],
+    ['control', 'proverka.html', 'Контроль'],
+    ['guarantee', 'guarantee.html', 'Гарантии'],
+    ['teacher', 'teacher.html', 'Учитель'],
+    ['client', 'confirm.html', 'Клиент'],
     ['alerts', 'notifications.html', 'Оповещения'],
-    ['client', 'confirm.html', 'Экран клиента'],
-    ['student', 'index.html', 'Платформа ученика']
+    ['student', 'index.html', 'Платформа']
   ];
   function shell(active) {
     var B = global.BRAND || {};

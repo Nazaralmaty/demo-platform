@@ -14,7 +14,7 @@
    localStorage этого браузера; «Сбросить демо» возвращает всё как было. */
 (function (global) {
   'use strict';
-  var C = global.CTRL;
+  var C = global.CTRL, S = global.SCHOOL;
 
   /* День демо-мира: понедельник. Первая половина октября закрыта, запросы
      клиентам ушли в пятницу 16-го, в воскресенье — напоминание. */
@@ -45,34 +45,47 @@
     { id: 's1', name: 'Аяжан', phone: '77011234567', teacher_id: 't1', level: 'pre-intermediate',
       days: 'mon,wed,fri', time_at: '18:00', rate: 1150, started_on: '2026-08-12', course: 3,
       pay_plan: 'month', paid_until: '2026-11-01', goal: 'IELTS 6.5 к лету',
-      note: 'Стесняется говорить вслух, письменные задания делает быстро.' },
+      note: 'Стесняется говорить вслух, письменные задания делает быстро.',
+      contract: { title: 'Помесячно · 12 уроков', price: 36000, lessons: 12, paid_at: '2026-10-01', offer_at: '2026-08-11T21:14:00+05:00', guarantee: 'IELTS 6.5 к лету' } },
     { id: 's2', name: 'Тимур', phone: '77029876543', teacher_id: 't3', level: 'intermediate',
       days: 'tue,thu', time_at: '19:00', rate: 1400, started_on: '2026-09-02', course: 6,
       pay_plan: 'two_weeks', paid_until: '2026-10-16', goal: 'Переезд в Канаду, IELTS 7.0',
-      note: 'Быстрый темп, любит обсуждать новости.' },
+      note: 'Быстрый темп, любит обсуждать новости.',
+      contract: { title: 'Две недели · 4 урока', price: 16000, lessons: 4, paid_at: '2026-10-02', offer_at: '2026-09-01T19:40:00+05:00', guarantee: 'IELTS 7.0' } },
     { id: 's3', name: 'Диана', phone: '77031112233', teacher_id: 't2', level: 'elementary',
       days: 'tue,thu,sat', time_at: '17:00', rate: 1150, started_on: '2026-09-20', course: 2,
       pay_plan: 'month', paid_until: '2026-10-20', goal: 'Школьная программа на 5',
-      note: 'Приходит с братом, вдвоём работают лучше.' },
+      note: 'Приходит с братом, вдвоём работают лучше.',
+      contract: { title: 'Помесячно · 12 уроков', price: 33000, lessons: 12, paid_at: '2026-09-20', offer_at: '2026-09-19T18:05:00+05:00', guarantee: null } },
     { id: 's4', name: 'Арман', phone: '77045556677', teacher_id: 't1', level: 'pre-intermediate',
       days: 'tue,thu', time_at: '18:30', rate: 1150, started_on: '2026-09-28', course: 2,
       pay_plan: 'month', paid_until: '2026-10-28', goal: 'Разговорный для поездок',
-      note: 'Спокойный, пунктуальный.' },
+      note: 'Спокойный, пунктуальный.',
+      contract: { title: 'Помесячно · 8 уроков', price: 24000, lessons: 8, paid_at: '2026-09-28', offer_at: '2026-09-27T12:30:00+05:00', guarantee: null } },
     { id: 's5', name: 'Аружан', phone: '77056667788', teacher_id: 't2', level: 'beginner',
       days: 'tue,thu,sat', time_at: '16:00', rate: 1150, started_on: '2026-10-05', course: 1,
-      pay_plan: 'lessons8', paid_until: '2026-11-05', goal: 'С нуля, понимать мультики',
-      note: 'Первый месяц, знакомство с языком.' },
+      pay_plan: 'package', paid_until: '2027-01-04', goal: 'С нуля, понимать мультики',
+      note: 'Первый месяц, знакомство с языком.',
+      contract: { title: 'Пакет 3 месяца · 24 урока', price: 120000, lessons: 24, paid_at: '2026-10-04', offer_at: '2026-10-04T19:38:00+05:00', guarantee: null } },
     { id: 's6', name: 'Ерасыл', phone: '77067778899', teacher_id: 't3', level: 'intermediate',
       days: 'mon,wed,fri', time_at: '19:30', rate: 1500, started_on: '2026-06-15', course: 9,
       pay_plan: 'month', paid_until: '2026-11-05', goal: 'IELTS 8.0 для NYU Shanghai',
-      note: 'Сильный ученик, занимается с июня.' },
+      note: 'Сильный ученик, занимается с июня.',
+      contract: { title: 'Помесячно · 12 уроков, интенсив IELTS', price: 54000, lessons: 12, paid_at: '2026-10-05', offer_at: '2026-08-03T10:12:00+05:00', guarantee: 'IELTS 8.0 для NYU Shanghai' } },
     { id: 's7', name: 'Мадина', phone: '77078889900', teacher_id: 't2', level: 'elementary',
       days: 'tue,thu', time_at: '17:30', rate: 1200, started_on: '2026-10-06', course: 1,
       pay_plan: 'two_weeks', paid_until: '2026-10-20', goal: 'Подтянуть оценки',
-      note: 'Только начала, стесняется.' }
+      note: 'Только начала, стесняется.',
+      contract: { title: 'Две недели · 4 урока', price: 12000, lessons: 4, paid_at: '2026-10-06', offer_at: '2026-10-05T17:20:00+05:00', guarantee: 'Пятёрка по английскому в четверти' } }
   ];
 
-  var PAY_PLAN = { month: 'Помесячно', two_weeks: 'Раз в 2 недели', lessons8: 'Пакет 8 уроков' };
+  var PAY_PLAN = { month: 'Помесячно', two_weeks: 'Раз в 2 недели', lessons8: 'Пакет 8 уроков', package: 'Пакет 3 месяца' };
+  var OFFER = 'Оферта GSC Study, ред. 3 от 01.08.2026';
+
+  /* Привычки учеников в платформе: d — как часто готовится к уроку и делает
+     домашку, s — сколько верных в заданиях. Из них генерируются события. */
+  var HABIT = { s1: { d: 0.95, s: 0.85 }, s2: { d: 0.15, s: 0.6 }, s3: { d: 0.7, s: 0.75 },
+                s4: { d: 0.85, s: 0.8 }, s5: { d: 0.9, s: 0.8 }, s6: { d: 1, s: 0.92 }, s7: { d: 0.2, s: 0.62 } };
 
   /* ── курс ────────────────────────────────────────────────────────── */
   function levelOf(card) {
@@ -110,6 +123,8 @@
     s2: { silent: true },
     s3: { answered: '12:05', q: [5, 5, 5, 5, 5, 5, 5],
           by: { '2026-10-08': { a: 'yes', q: 5, notTaught: true },
+                /* учитель провёл свободную беседу вместо урока курса */
+                '2026-10-10': { a: 'yes', q: 5, offProgram: 'Свободная беседа: песни и мультфильмы' },
                 '2026-10-13': { a: 'yes', q: 2, note: 'Урок был, но полчаса у учителя не работал микрофон.' } } },
     s4: { answered: '14:40', q: [5, 4, 5, 5, 5] },
     s5: { answered: '13:10', q: [5, 5, 5, 4, 5],
@@ -119,8 +134,70 @@
              после того, как клиент подтвердил период. */
           extra: [{ date: '2026-10-10', at: at('2026-10-17', '21:10') },
                   { date: '2026-10-11', at: at('2026-10-17', '21:12') }] },
-    s7: { answered: '15:20', q: [4, 5, 5, 5] }
+    s7: { answered: '15:20', q: [4, 5, 5, 5],
+          by: { '2026-10-13': { a: 'no', notTaught: true, note: 'Мадина болела, урока не было.' } } }
   };
+
+  /* ── что ученик делал в платформе ──────────────────────────────────────
+     Детерминированно: один и тот же «случай» на каждый урок, поэтому мир
+     после сброса всегда тот же. До урока — видео этой части урока, после —
+     слова (после правила) или задания и чтение (после практики), иногда
+     игра. Ничего — после сегодняшнего дня. */
+  function rnd(key) {
+    var h = 2166136261;
+    for (var i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 16777619);
+    return ((h >>> 0) % 10007) / 10007;
+  }
+  function hm(h, key) { var m = 10 + Math.floor(rnd(key) * 45); return (h < 10 ? '0' : '') + h + ':' + m; }
+  function activity(cards, lessons) {
+    var out = [], seq = 0, nowMax = at(TODAY, NOW_TIME);
+    function ev(card, when, kind, lesson, part, extra) {
+      if (when > nowMax) return;
+      var e = { id: card.id + '-e' + (++seq), card_id: card.id, at: when, kind: kind, lesson: lesson || null,
+                part: part == null ? null : part };
+      Object.keys(extra || {}).forEach(function (k) { e[k] = extra[k]; });
+      out.push(e);
+    }
+    cards.forEach(function (card) {
+      var h = HABIT[card.id] || { d: 0.5, s: 0.7 };
+      /* первый вход — через три минуты после принятия оферты */
+      var o = card.contract.offer_at, mins = +o.slice(11, 13) * 60 + +o.slice(14, 16) + 3;
+      ev(card, at(C.day(o), (mins < 600 ? '0' : '') + Math.floor(mins / 60) + ':' + (mins % 60 < 10 ? '0' : '') + mins % 60), 'login');
+      lessons.filter(function (l) { return l.card_id === card.id && l.course_id && C.dateOf(l) <= TODAY; })
+        .forEach(function (l) {
+          var d = C.dateOf(l), held = (l.taught || l.client_answer === 'yes') && l.client_answer !== 'no';
+          if (rnd(l.id + 'p') < h.d) {
+            ev(card, at(C.addDays(d, -1), hm(20, l.id + 'pt')), 'video', l.course_id, l.part,
+               { minutes: 4 + Math.floor(rnd(l.id + 'pm') * 3) });
+          }
+          if (!held || d >= TODAY) return;
+          if (rnd(l.id + 'h') < h.d) {
+            var when = at(C.addDays(d, 1), hm(19, l.id + 'ht'));
+            if (C.day(when) > TODAY) when = at(d, hm(21, l.id + 'ht'));
+            if (l.part) {
+              var right = Math.max(1, Math.min(6, Math.round(6 * h.s + (rnd(l.id + 'hs') - 0.5) * 2)));
+              ev(card, when, 'tasks', l.course_id, 1, { right: right, total: 6, minutes: 8 });
+              ev(card, when.replace(/:(\d\d):00/, function (m, x) { return ':' + (+x + 9 < 60 ? +x + 9 : 59) + ':00'; }),
+                 'text', l.course_id, 1, { minutes: 4 });
+            } else {
+              ev(card, when, 'words', l.course_id, 0, { minutes: 3, total: 8 });
+            }
+          }
+          if (rnd(l.id + 'g') < h.d * 0.4) ev(card, at(C.addDays(d, 2), hm(21, l.id + 'gt')), 'game', null, null, { minutes: 6 });
+        });
+      /* Аружан в первый же вечер прошла три урока вперёд — это тоже
+         полученная услуга. */
+      if (card.id === 's5') {
+        ['b1', 'b2', 'b3'].forEach(function (id, i) {
+          ev(card, at('2026-10-04', '20:' + (10 + i * 12)), 'video', id, 0, { minutes: 5 });
+          ev(card, at('2026-10-04', '20:' + (16 + i * 12)), 'video', id, 1, { minutes: 5 });
+        });
+        ev(card, at('2026-10-05', '11:05'), 'game', null, null, { minutes: 9 });
+        ev(card, at('2026-10-05', '11:20'), 'words', 'b1', 0, { minutes: 4, total: 8 });
+      }
+    });
+    return out.sort(function (a, b) { return String(a.at).localeCompare(String(b.at)); });
+  }
 
   function seed() {
     var lessons = [], requests = [], log = [], messages = [];
@@ -136,7 +213,7 @@
       dates.forEach(function (d, i) {
         var n = card.course + Math.floor(i / 2), part = i % 2;
         var past = d < TODAY;
-        var l = { id: card.id + '-' + d, card_id: card.id, plan_date: d,
+        var l = { id: card.id + '-' + d, card_id: card.id, plan_date: d, part: part,
                   course_id: (courseLesson(card, n) || {}).id || null,
                   topic: topicOf(card, n, part), homework: homeworkOf(card, n, part),
                   taught: past, taught_on: past ? d : null,
@@ -146,6 +223,7 @@
         if (C.inPeriod(d, P1) && !scene.silent) {
           var over = (scene.by || {})[d] || {};
           if (over.notTaught) { l.taught = false; l.taught_on = null; l.taught_at = null; }
+          if (over.offProgram) { l.topic = over.offProgram; l.course_id = null; l.homework = ''; }
           l.client_answer = over.a || 'yes';
           l.client_quality = l.client_answer === 'yes' ? (over.q || scene.q[p1count] || 5) : null;
           l.client_note = over.note || null;
@@ -172,8 +250,14 @@
       requests.push(req);
     });
 
-    var state = { v: 2, today: TODAY, teachers: TEACHERS, cards: cards, lessons: lessons,
-                  requests: requests, log: log, messages: messages, seen: {} };
+    var policy = {}; Object.keys(S.POLICY).forEach(function (k) { policy[k] = S.POLICY[k]; });
+    var state = { v: 3, today: TODAY, teachers: TEACHERS, cards: cards, lessons: lessons,
+                  requests: requests, log: log, messages: messages, seen: {},
+                  activity: activity(cards, lessons), policy: policy,
+                  /* Мама Аружан через две недели просит вернуть весь пакет. */
+                  refunds: [{ id: 'rf-s5', card_id: 's5', at: at('2026-10-18', '20:15'), status: 'open',
+                              text: 'Ребёнку неинтересно, хотим вернуть всю сумму за пакет.' }] };
+    note(state, at('2026-10-18', '20:15'), 'client', 'Аружан: запрос на возврат всей суммы за пакет (120 000 ₸)');
 
     /* Письма, которые уже ушли: запросы, ответы, напоминание и алерты. */
     requests.forEach(function (r) {
@@ -213,7 +297,7 @@
     if (state) return state;
     try {
       var raw = JSON.parse(localStorage.getItem(STORE));
-      if (raw && raw.v === 2 && raw.today === TODAY && raw.lessons) state = raw;
+      if (raw && raw.v === 3 && raw.today === TODAY && raw.lessons) state = raw;
     } catch (e) {}
     if (!state) state = seed();
     return state;
@@ -426,12 +510,31 @@
       save();
       return text;
     },
+    /* Правила школы: стоимость доступа к платформе и условия гарантии. */
+    policy: function (p) {
+      var st = load();
+      Object.keys(p).forEach(function (k) { if (k in st.policy && isFinite(+p[k]) && +p[k] >= 0) st.policy[k] = +p[k]; });
+      note(st, now(), 'admin', 'Правила школы изменены: доступ к платформе ' + st.policy.platform_fee + ' ₸, гарантия — ' +
+           st.policy.attendance + '% / ' + st.policy.homework + '% / ' + st.policy.score + '%');
+      save();
+      return 'ok';
+    },
+    /* Решение по возврату: сумма по расчёту, акт приложен. */
+    refund: function (id, amount) {
+      var st = load(), r = byId(st.refunds, id);
+      if (!r || r.status !== 'open') return 'Уже решено';
+      r.status = 'done'; r.amount = amount; r.decided_at = now();
+      note(st, now(), 'admin', byId(st.cards, r.card_id).name + ': возврат ' + amount + ' ₸ по акту об оказанных услугах');
+      save();
+      return 'ok';
+    },
     /* Оплата от клиента получена: продлить «оплачено до» на период плана. */
     paid: function (cardId) {
       var st = load(), c = byId(st.cards, cardId);
       var from = c.paid_until && c.paid_until > TODAY ? c.paid_until : TODAY;
       c.paid_until = c.pay_plan === 'two_weeks' ? C.addDays(from, 14)
                    : c.pay_plan === 'lessons8' ? C.addDays(from, 28)
+                   : c.pay_plan === 'package' ? nextMonth(nextMonth(nextMonth(from)))
                    : nextMonth(from);
       note(st, now(), 'admin', 'Оплата: ' + c.name + ', оплачено до ' + C.dateLabel(c.paid_until, 'ru'));
       save();
@@ -454,6 +557,16 @@
     return { tone: 'ok', text: 'до ' + C.dateLabel(card.paid_until, 'ru'), left: left };
   }
 
+  /* Факты по ученику и по всем — то, что считает app/school.js. */
+  function facts(cardId) {
+    var st = load(), an = C.analyze(st, TODAY);
+    return S.facts(byId(st.cards, cardId), an, st.activity, TODAY, st.policy);
+  }
+  function allFacts() {
+    var st = load(), an = C.analyze(st, TODAY);
+    return st.cards.map(function (c) { return S.facts(c, an, st.activity, TODAY, st.policy); });
+  }
+
   global.DEMO = {
     TODAY: TODAY, P1: P1, P2: P2, PAY_PLAN: PAY_PLAN, STORE: STORE,
     load: load, save: save, reset: reset, onChange: onChange, seed: seed,
@@ -461,6 +574,7 @@
     byId: byId, teacherOf: teacherOf, lessonsOf: lessonsOf, nextLesson: nextLesson,
     levelOf: levelOf, courseLesson: courseLesson, confirmUrl: confirmUrl,
     requestText: requestText, confirmPayload: confirmPayload, payState: payState,
+    facts: facts, allFacts: allFacts, OFFER: OFFER,
     act: A
   };
 })(window);

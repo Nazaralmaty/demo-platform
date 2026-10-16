@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#135685">
+<title>GSC Study · гарантии и возвраты</title>
+<link rel="icon" href="assets/brand-logo.png">
+<link rel="stylesheet" href="app/style.css">
+<link rel="stylesheet" href="app/brand.css">
+<link rel="stylesheet" href="app/eco.css">
+<style>
+  .g-sum{display:grid;gap:0;margin:2px 0 4px}
+  .g-sum div{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-top:1px solid var(--line);font-size:14px}
+  .g-sum div:first-child{border-top:0}
+  .g-sum b{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .g-sum .tot{font-size:15.5px} .g-sum .tot b{color:var(--ok)}
+  .g-pct{font-weight:700;font-variant-numeric:tabular-nums}
+  .g-pct.ok{color:var(--ok)} .g-pct.bad{color:var(--accent)} .g-pct.mute{color:var(--muted)}
+  .g-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .g-form label{display:grid;gap:6px;font-size:13px;font-weight:700;color:var(--muted)}
+  .g-form label.wide{grid-column:1/-1}
+  .g-form .in{position:relative}
+  .g-form .in i{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-style:normal;color:var(--muted);font-weight:700;pointer-events:none}
+  .g-form .e-field{padding-right:44px;font-variant-numeric:tabular-nums}
+  @media (max-width:440px){ .g-form{grid-template-columns:minmax(0,1fr)} }
+  .g-doc{background:var(--bg);border-radius:14px;padding:14px 16px;font-size:13.5px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;
+         font-family:ui-monospace,'SFMono-Regular',Menlo,monospace;max-height:60vh;overflow:auto;margin:0}
+</style>
+</head>
+<body class="eco">
+<main class="e-page" id="root"></main>
+
+<script src="config.js"></script>
+<script src="app/course.js"></script>
+<script src="app/control.js"></script>
+<script src="app/school.js"></script>
+<script src="app/data.js"></script>
+<script src="app/eco.js"></script>
+<script>
+(function () {
+  'use strict';
+  var C = CTRL, D = DEMO, S = SCHOOL, B = window.BRAND || {};
+  E.shell('guarantee');
+
+  function opts(st) { return { school: B.name, offer: D.OFFER, today: D.TODAY, policy: st.policy }; }
+  function copy(text) {
+    (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
+      .then(function () { E.toast('Скопировано'); })
+      .catch(function () { E.toast('Не удалось скопировать — выделите текст вручную'); });
+  }
+
+  function refunds(st, F) {
+    var list = st.refunds.slice().sort(function (a, b) { return (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1); });
+    return '<section class="e-card"><div class="e-card-h"><h2>Запросы на возврат</h2>' +
+        '<span class="sub">Клиент получил доступ к платформе и уроки — это оказанная услуга. Возвращается только остальное, по акту из журнала.</span></div>' +
+      (list.length ? '<div class="e-tickets">' + list.map(function (q) {
+        var f = F.filter(function (x) { return x.card.id === q.card_id; })[0], r = S.refund(f, st.policy), open = q.status === 'open';
+        return '<div class="e-ticket ' + (open ? 'bad' : '') + '"><div class="hd"><span class="nm"><b>' + E.esc(f.card.name) + '</b>' +
+            E.esc(f.card.contract.title) + '</span>' + (open ? '<span class="e-chip bad">ждёт решения</span>' : '<span class="e-chip ok">решено</span>') + '</div>' +
+          '<div class="e-quote">«' + E.esc(q.text) + '» <span class="e-small">— ' + E.when(q.at) + '</span></div>' +
+          '<div class="g-sum">' +
+            '<div><span>Оплачено ' + C.dateLabel(C.day(f.card.contract.paid_at), 'ru') + '</span><b>' + E.money(r.paid) + '</b></div>' +
+            '<div><span>Доступ к платформе · вход ' + (f.firstLogin ? E.when(f.firstLogin) : '— не входил') + '</span><b>− ' + E.money(r.fee) + '</b></div>' +
+            '<div><span>Уроки, подтверждённые клиентом: ' + r.delivered.length + ' × ' + E.money(r.lessonPrice) + '</span><b>− ' + E.money(r.deliveredSum) + '</b></div>' +
+            '<div class="tot"><span>' + (open ? 'К возврату' : 'Возвращено ' + E.when(q.decided_at)) + '</span><b>' + E.money(open ? r.refund : q.amount) + '</b></div>' +
+          '</div>' +
+          '<p>Без платформы и акта школа вернула бы <b>' + E.money(r.paid) + '</b>. ' +
+            (r.pending.length ? 'Ещё ' + E.plural(r.pending.length, 'урок', 'урока', 'уроков') + ' ждут ответа клиента — если подтвердятся, удержание до ' + E.money(r.retainedMax) + '.' : '') + '</p>' +
+          '<div class="e-acts">' +
+            (open ? '<button class="e-btn" data-decide="' + q.id + '">Вернуть ' + E.money(r.refund) + ' по акту</button>' : '') +
+            '<a class="e-btn sec" href="student.html?s=' + f.card.id + '#act">Акт и досье →</a></div></div>';
+      }).join('') + '</div>'
+      : '<div class="e-empty"><b>Запросов нет</b>Если клиент попросит вернуть деньги, расчёт и акт соберутся из журнала.</div>') +
+    '</section>';
+  }
+
+  var SHORT = { ok: 'выполняет', risk: 'под угрозой', fail: 'нарушены' };
+  function guarantees(st, F) {
+    var rows = F.map(function (f) { return { f: f, g: S.guarantee(f, st.policy) }; }).filter(function (x) { return x.g.applies; });
+    function cell(c, l) {
+      return '<td class="num" data-l="' + l + '"><span class="g-pct ' + (c.value == null && c.ok ? 'mute' : c.ok ? 'ok' : 'bad') + '">' +
+        (c.value == null ? '—' : c.value + '%') + '</span></td>';
+    }
+    return '<section class="e-card flush"><div class="e-card-h"><h2>Гарантии</h2>' +
+        '<span class="sub">Гарантия действует, пока ученик выполняет условия. Нужно: посещаемость ' + st.policy.attendance + '%, домашка ' +
+        st.policy.homework + '%, результат ' + st.policy.score + '%.</span></div>' +
+      '<table class="e-table"><thead><tr><th>Ученик и цель</th><th class="num">Посещ.</th><th class="num">Домашка</th><th class="num">Результат</th>' +
+        '<th>Статус</th></tr></thead><tbody>' +
+      rows.map(function (x) {
+        var s = S.GSTATUS[x.g.status], ch = x.g.checks;
+        return '<tr class="click" data-proof="' + x.f.card.id + '" title="Справка по журналу"><td class="lead">' + E.who(x.f.card.name, x.g.goal) + '</td>' +
+          cell(ch[0], 'Посещаемость') + cell(ch[1], 'Домашка в платформе') + cell(ch[2], 'Результат заданий') +
+          '<td data-l="Статус"><span class="e-chip ' + s[1] + '">' + SHORT[x.g.status] + '</span></td></tr>';
+      }).join('') + '</tbody></table>' +
+      '<p class="e-small" style="margin:0;padding:12px 20px 18px">Клиент требует гарантию, а ученик не учился? Нажмите на строку — справка из журнала: ' +
+        'условия из оферты, факт по каждому, пропущенные домашки по датам.</p></section>';
+  }
+
+  function policy(st) {
+    var P = st.policy;
+    function field(k, label, unit, cls) {
+      return '<label class="' + (cls || '') + '">' + label + '<span class="in"><input class="e-field" type="number" min="0" inputmode="numeric" name="' + k +
+        '" value="' + P[k] + '"><i>' + unit + '</i></span></label>';
+    }
+    return '<section class="e-card"><div class="e-card-h"><h2>Правила школы</h2>' +
+        '<span class="sub">Из них считаются возвраты, гарантии и пункты оферты ниже. Поменяйте — пересчитается всё.</span></div>' +
+      '<form class="g-form" id="pol">' +
+        field('platform_fee', 'Доступ к платформе — не возвращается после входа', '₸', 'wide') +
+        field('attendance', 'Посещаемость для гарантии', '%') + field('homework', 'Домашка для гарантии', '%') +
+        field('score', 'Результат заданий', '%') + field('hw_days', 'Срок домашки после урока', 'дн.') +
+        '<div class="e-acts wide" style="grid-column:1/-1"><button class="e-btn" type="submit">Сохранить правила</button></div>' +
+      '</form></section>';
+  }
+
+  function offer(st) {
+    return '<section class="e-card"><div class="e-card-h"><h2>Пункты для оферты</h2><span class="sp"></span>' +
+        '<button class="e-btn sec sm" id="copyClause">Скопировать</button>' +
+        '<span class="sub">Клиент принимает оферту при первом входе в платформу — дата и время сохраняются.</span></div>' +
+      '<pre class="g-doc" id="clause">' + E.esc(S.clause(st.policy, { school: B.name })) + '</pre>' +
+      '<p class="e-small" style="margin:12px 0 0">Это образец для юриста школы, а не юридическая консультация. По закону клиент вправе отказаться ' +
+        'от услуги, оплатив фактически оказанное, — поэтому удержание должно опираться на документ. Акт и справка из журнала платформы и есть этот документ.</p>' +
+    '</section>';
+  }
+
+  function draw() {
+    var st = D.load(), F = D.allFacts();
+    var open = st.refunds.filter(function (q) { return q.status === 'open'; });
+    var kept = 0, asked = 0;
+    open.forEach(function (q) {
+      var r = S.refund(F.filter(function (f) { return f.card.id === q.card_id; })[0], st.policy);
+      kept += r.retained; asked += r.paid;
+    });
+    var G = F.map(function (f) { return S.guarantee(f, st.policy); }).filter(function (g) { return g.applies; });
+    var ok = G.filter(function (g) { return g.status === 'ok'; }).length;
+    return '<div class="e-head"><div><span class="e-eyebrow">Гарантии и возвраты</span><h1>Возврат — по акту, гарантия — по фактам</h1>' +
+        '<p>Платформа — интеллектуальная собственность школы и оказанная услуга с первого входа. Каждое действие ученика записано: ' +
+        'когда принял оферту, что смотрел, какие уроки подтвердил. Поэтому школа удерживает то, что клиент уже получил, ' +
+        'и может доказать, что ученик сам не выполнял условия гарантии.</p></div></div>' +
+      '<div class="e-kpis">' +
+        '<div class="e-kpi ' + (open.length ? 'bad' : 'ok') + '"><span>Запросы на возврат</span><b>' + open.length + '</b><small>' + (open.length ? 'ждут решения' : 'все решены') + '</small></div>' +
+        '<div class="e-kpi navy"><span>Остаётся у школы по акту</span><b>' + E.money(kept) + '</b><small>' + (asked ? 'из ' + E.money(asked) + ', которые просят вернуть' : 'открытых запросов нет') + '</small></div>' +
+        '<div class="e-kpi ' + (ok === G.length ? 'ok' : '') + '"><span>Гарантии выполняются</span><b>' + ok + ' из ' + G.length + '</b><small>ученики с гарантией</small></div>' +
+        '<div class="e-kpi ' + (G.length - ok ? 'warn' : '') + '"><span>Условия нарушены</span><b>' + (G.length - ok) + '</b><small>гарантия не действует, есть справка</small></div>' +
+      '</div>' +
+      '<div class="e-grid two">' +
+        '<div class="e-stack">' + refunds(st, F) + guarantees(st, F) + '</div>' +
+        '<div class="e-stack">' + policy(st) + offer(st) + '</div>' +
+      '</div>';
+  }
+  draw.wire = function (root) {
+    E.on(root, '[data-decide]', function (b) {
+      var st = D.load(), q = st.refunds.filter(function (x) { return x.id === b.getAttribute('data-decide'); })[0];
+      var r = S.refund(D.facts(q.card_id), st.policy);
+      if (D.act.refund(q.id, r.refund) === 'ok') E.toast('Решено: возврат ' + E.money(r.refund) + ', удержано ' + E.money(r.retained));
+    });
+    E.on(root, '[data-proof]', function (b) {
+      var st = D.load(), f = D.facts(b.getAttribute('data-proof')), text = S.proof(f, S.guarantee(f, st.policy), opts(st));
+      var dlg = E.open('<h2 style="margin:0 0 12px">Справка: ' + E.esc(f.card.name) + '</h2><pre class="g-doc" id="proofText">' + E.esc(text) + '</pre>' +
+        '<div class="e-acts" style="margin-top:14px"><button class="e-btn" id="copyProof">Скопировать</button>' +
+        '<a class="e-btn sec" href="student.html?s=' + f.card.id + '">Досье →</a><button class="e-btn sec" data-close>Закрыть</button></div>');
+      dlg.querySelector('#copyProof').onclick = function () { copy(text); };
+    });
+    E.on(root, '#copyClause', function () { copy(root.querySelector('#clause').textContent); });
+    var form = root.querySelector('#pol');
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var p = {};
+      Array.prototype.forEach.call(form.querySelectorAll('input'), function (i) { if (i.value !== '') p[i.name] = +i.value; });
+      if (D.act.policy(p) === 'ok') E.toast('Правила сохранены — возвраты, гарантии и оферта пересчитаны');
+    });
+  };
+  E.mount(document.getElementById('root'), draw);
+})();
+</script>
+</body>
+</html>

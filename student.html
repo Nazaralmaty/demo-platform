@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#135685">
+<title>GSC Study · досье ученика</title>
+<link rel="icon" href="assets/brand-logo.png">
+<link rel="stylesheet" href="app/style.css">
+<link rel="stylesheet" href="app/brand.css">
+<link rel="stylesheet" href="app/eco.css">
+<style>
+  .d-cal{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:5px}
+  .d-day{border-radius:10px;padding:6px 0 5px;text-align:center;background:var(--track);color:var(--muted);font-size:11px;line-height:1.2;
+         font-variant-numeric:tabular-nums;border:1.5px solid transparent}
+  .d-day b{display:block;font-size:13px;color:var(--ink)}
+  .d-day.a1{background:color-mix(in srgb,var(--ok) 22%,var(--card))} .d-day.a2{background:color-mix(in srgb,var(--ok) 45%,var(--card))}
+  .d-day.a3{background:var(--ok);color:#fff} .d-day.a3 b{color:#fff}
+  .d-day.les{border-color:var(--navy)}
+  .d-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:10px}
+  .d-legend i{display:inline-block;width:12px;height:12px;border-radius:4px;vertical-align:-1px;margin-right:5px;background:var(--ok)}
+  .d-legend i.les{background:transparent;border:1.5px solid var(--navy)}
+  .d-ev{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+  .d-ev:first-child{border-top:0}
+  .d-ev span{color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
+  .d-mark{font-weight:700;font-size:13px;white-space:nowrap}
+  .d-mark.y{color:var(--ok)} .d-mark.n{color:var(--accent)} .d-mark.w{color:var(--muted)}
+  .d-check{display:grid;gap:4px;padding:10px 0;border-top:1px solid var(--line)}
+  .d-check:first-of-type{border-top:0}
+  .d-check .top{display:flex;justify-content:space-between;gap:10px;font-size:14px}
+  .d-check .top b{font-variant-numeric:tabular-nums}
+  .d-check .e-bar{height:8px;position:relative}
+  .d-check .need{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);border-radius:1px}
+  .d-act{background:var(--bg);border-radius:14px;padding:14px 16px;font-size:13.5px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;
+         font-family:ui-monospace,'SFMono-Regular',Menlo,monospace;max-height:520px;overflow:auto}
+  .d-sum{display:grid;gap:2px;margin:6px 0 12px}
+  .d-sum div{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px solid var(--line);font-size:14.5px}
+  .d-sum div:first-child{border-top:0}
+  .d-sum b{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .d-sum .tot{font-size:16.5px} .d-sum .tot b{color:var(--ok)}
+  @media print{ .e-head .e-seg,.e-kpis,.no-print{display:none!important} .d-act{max-height:none;background:#fff} }
+</style>
+</head>
+<body class="eco">
+<main class="e-page" id="root"></main>
+
+<script src="config.js"></script>
+<script src="app/course.js"></script>
+<script src="app/control.js"></script>
+<script src="app/school.js"></script>
+<script src="app/data.js"></script>
+<script src="app/eco.js"></script>
+<script>
+(function () {
+  'use strict';
+  var C = CTRL, D = DEMO, S = SCHOOL, B = window.BRAND || {};
+  E.shell('guarantee');
+  var m = /[?&]s=(s\d+)/.exec(location.search);
+  var V = { id: m ? m[1] : 's5', act: /#act/.test(location.hash) };
+
+  function pctTxt(x) { return x == null ? '—' : x + '%'; }
+  function hwMark(s) {
+    if (!s.program) return '<span class="d-mark w">вне программы</span>';
+    if (s.hw === true) return '<span class="d-mark y">✓ сделано' + (s.hwScore != null ? ' · ' + s.hwScore + '%' : '') + '</span>';
+    if (s.hw === false) return '<span class="d-mark n">не сделано</span>';
+    return s.held ? '<span class="d-mark w">срок до ' + E.short(s.hwDue) + '</span>' : '<span class="d-mark w">—</span>';
+  }
+  function prepMark(s) {
+    if (!s.program) return '<span class="d-mark w">—</span>';
+    return s.prep ? '<span class="d-mark y">✓ видео</span>' : '<span class="d-mark n">не смотрел</span>';
+  }
+
+  function lessons(f) {
+    return '<section class="e-card flush"><div class="e-card-h"><h2>Уроки и домашка</h2>' +
+        '<span class="sub">До урока — видео этой части урока, после — слова или задания в платформе за ' +
+        D.load().policy.hw_days + ' дня. Клиент — его ответ по ссылке.</span></div>' +
+      '<table class="e-table"><thead><tr><th>Дата</th><th>Урок</th><th>До урока</th><th>После</th><th>Клиент</th></tr></thead><tbody>' +
+      f.sessions.slice().reverse().map(function (s) {
+        return '<tr><td class="lead"><b class="tnum">' + E.short(s.date) + '</b> <span class="e-small">' + E.dayShort(s.date) + '</span></td>' +
+          '<td data-l="Урок" style="white-space:normal">' + E.esc(s.l.topic || '—') + (s.program ? '' : ' <span class="e-flag">вне программы</span>') + '</td>' +
+          '<td data-l="До урока">' + prepMark(s) + '</td>' +
+          '<td data-l="После">' + hwMark(s) + '</td>' +
+          '<td data-l="Клиент">' + E.chip(s.r.status) + '</td></tr>';
+      }).join('') + '</tbody></table></section>';
+  }
+
+  function calendar(f) {
+    var days = [], d = '2026-10-01', count = {}, les = {};
+    f.events.forEach(function (e) { var k = C.day(e.at); count[k] = (count[k] || 0) + 1; });
+    f.sessions.forEach(function (s) { les[s.date] = 1; });
+    while (d <= D.TODAY) { days.push(d); d = C.addDays(d, 1); }
+    var tl = f.events.slice().reverse();
+    return '<section class="e-card"><div class="e-card-h"><h2>Действия в платформе</h2>' +
+        '<span class="sub">Каждое действие записывается с датой и временем: вход, видео, слова, задания, чтение, игры.</span></div>' +
+      '<div class="d-cal">' + days.map(function (x) {
+        var n = count[x] || 0, a = n >= 4 ? 'a3' : n >= 2 ? 'a2' : n ? 'a1' : '';
+        return '<div class="d-day ' + a + (les[x] ? ' les' : '') + '" title="' + C.dateLabel(x, 'ru') + ': ' + n + ' действ.">' +
+          E.dayShort(x) + '<b>' + +x.slice(8) + '</b></div>';
+      }).join('') + '</div>' +
+      '<div class="d-legend"><span><i></i>занимался в платформе</span><span><i class="les"></i>урок с учителем</span></div>' +
+      '<div class="e-label" style="margin-top:16px">Последние действия</div>' +
+      '<div id="evs">' + tl.slice(0, V.all ? tl.length : 8).map(function (e) {
+        return '<div class="d-ev"><span>' + E.when(e.at) + '</span><div>' + E.esc(S.KIND[e.kind] || e.kind) +
+          (e.lesson ? ' · урок ' + E.esc(e.lesson.replace(/^\D/, '')) + (e.part === 1 ? ', практика' : e.part === 0 ? ', правило' : '') : '') +
+          (e.total && e.kind === 'tasks' ? ' · ' + e.right + ' из ' + e.total : '') +
+          (e.total && e.kind === 'words' ? ' · ' + E.plural(e.total, 'слово', 'слова', 'слов') : '') + (e.minutes ? ' · ' + e.minutes + ' мин' : '') + '</div></div>';
+      }).join('') + '</div>' +
+      (tl.length > 8 ? '<button class="e-link no-print" id="allEv" style="margin-top:8px">' +
+        (V.all ? 'Свернуть' : 'Показать все ' + tl.length) + '</button>' : '') +
+    '</section>';
+  }
+
+  function contract(f) {
+    var c = f.card.contract, t = D.teacherOf(D.load(), f.card);
+    return '<section class="e-card"><div class="e-card-h"><h2>Договор</h2></div><dl class="e-dl">' +
+      '<div><dt>Программа</dt><dd>' + E.esc(c.title) + '</dd></div>' +
+      '<div><dt>Оплачено</dt><dd>' + E.money(c.price) + ' · ' + C.dateLabel(C.day(c.paid_at), 'ru') + '</dd></div>' +
+      '<div><dt>Цена урока</dt><dd>' + E.money(Math.round(c.price / c.lessons)) + '</dd></div>' +
+      '<div><dt>Оферта принята</dt><dd>' + C.dateLabel(C.day(c.offer_at), 'ru') + ', ' + E.time(c.offer_at) + '</dd></div>' +
+      '<div><dt>Первый вход в платформу</dt><dd>' + (f.firstLogin ? E.when(f.firstLogin) : '—') + '</dd></div>' +
+      '<div><dt>Учитель</dt><dd>' + E.esc(t.name) + '</dd></div>' +
+      '<div><dt>Гарантия</dt><dd>' + (c.guarantee ? E.esc(c.guarantee) : 'нет') + '</dd></div>' +
+    '</dl><p class="e-small" style="margin:10px 0 0">' + E.esc(D.OFFER) + '. Принимается при первом входе в платформу.</p></section>';
+  }
+
+  function guarantee(f) {
+    var g = S.guarantee(f, D.load().policy);
+    if (!g.applies) return '';
+    var st = S.GSTATUS[g.status];
+    return '<section class="e-card"><div class="e-card-h"><h2>Гарантия</h2><span class="sp"></span>' +
+        '<span class="e-chip ' + st[1] + '">' + st[0] + '</span><span class="sub">' + E.esc(g.goal) +
+        '. Гарантия действует, пока ученик выполняет условия школы.</span></div>' +
+      g.checks.map(function (c) {
+        var v = c.value == null ? 0 : c.value;
+        return '<div class="d-check"><div class="top"><span>' + c.label + ' <span class="e-small">· ' + E.esc(c.note) + '</span></span>' +
+          '<b style="color:var(--' + (c.ok ? 'ok' : 'accent') + ')">' + pctTxt(c.value) + ' <span class="e-small">/ нужно ' + c.need + '%</span></b></div>' +
+          '<div class="e-bar"><i class="' + (c.ok ? 'ok' : 'bad') + '" style="width:' + v + '%"></i>' +
+          '<span class="need" style="left:' + c.need + '%"></span></div></div>';
+      }).join('') +
+      '<div class="e-acts no-print" style="margin-top:12px"><button class="e-btn sec" id="proof">Справка для клиента</button></div>' +
+      '<p class="e-small" style="margin:10px 0 0">Справка — условия из оферты рядом с фактом из журнала. Ответ клиенту, который требует гарантию, а ученик не учился.</p>' +
+    '</section>';
+  }
+
+  function refundBox(f) {
+    var st = D.load(), r = S.refund(f, st.policy);
+    var req = st.refunds.filter(function (x) { return x.card_id === f.card.id; })[0];
+    var open = req && req.status === 'open';
+    var show = V.act || !!req;
+    return '<section class="e-card" id="act"><div class="e-card-h"><h2>Возврат и акт</h2><span class="sp"></span>' +
+        (req ? (open ? '<span class="e-chip bad">запрос на возврат</span>' : '<span class="e-chip ok">решено</span>') : '') + '</div>' +
+      (req ? '<div class="e-quote" style="margin-bottom:12px">«' + E.esc(req.text) + '» <span class="e-small">— ' + E.when(req.at) + '</span></div>' : '') +
+      (show
+        ? '<div class="d-sum">' +
+            '<div><span>Оплачено</span><b>' + E.money(r.paid) + '</b></div>' +
+            '<div><span>Доступ к платформе ' + (r.feeApplies ? '' : '<span class="e-small">(не входил)</span>') + '</span><b>− ' + E.money(r.fee) + '</b></div>' +
+            '<div><span>Проведено и подтверждено: ' + r.delivered.length + ' × ' + E.money(r.lessonPrice) + '</span><b>− ' + E.money(r.deliveredSum) + '</b></div>' +
+            '<div class="tot"><span>К возврату</span><b>' + E.money(r.refund) + '</b></div>' +
+          '</div>' +
+          (r.pending.length ? '<p class="e-small" style="margin:-4px 0 12px">Ещё ' + E.plural(r.pending.length, 'урок', 'урока', 'уроков') +
+            ' без ответа клиента — в расчёт не вошли. Если подтвердятся, удержание — до ' + E.money(r.retainedMax) + '.</p>' : '') +
+          '<div class="d-act" id="actText">' + E.esc(S.act(f, r, { school: B.name, offer: D.OFFER, today: D.TODAY, policy: st.policy,
+            phone: E.phoneFmt(f.card.phone) })) + '</div>' +
+          '<div class="e-acts no-print" style="margin-top:12px">' +
+            (open ? '<button class="e-btn" id="decide">Вернуть ' + E.money(r.refund) + ' по акту</button>' :
+              req ? '<span class="e-small">Возвращено ' + E.money(req.amount) + ', ' + E.when(req.decided_at) + '.</span>' : '') +
+            '<button class="e-btn sec" id="copyAct">Скопировать акт</button>' +
+            '<button class="e-btn sec" id="printAct">Печать</button></div>' +
+          '<p class="e-small" style="margin:12px 0 0">Условия удержания — из договора-оферты школы, которую клиент принял при входе. ' +
+            'Сумму и формулировки школа согласует со своим юристом: при отказе от услуги клиент оплачивает то, что уже получил.</p>'
+        : '<p class="e-small" style="margin:0 0 12px">Запроса на возврат нет. Расчёт и акт можно собрать заранее — например, перед звонком клиенту.</p>' +
+          '<button class="e-btn sec no-print" id="calc">Рассчитать возврат и акт</button>') +
+    '</section>';
+  }
+
+  function draw() {
+    var st = D.load(), f = D.facts(V.id), c = f.card, t = D.teacherOf(st, c), lv = D.levelOf(c);
+    var hw = S.rate(f.homework), pr = S.rate(f.prep);
+    return '<div class="e-head"><div><span class="e-eyebrow">Досье ученика</span><h1>' + E.esc(c.name) + '</h1>' +
+        '<p>' + E.esc(t.name) + ' · ' + E.esc(lv ? lv.code + ' ' + lv.title : c.level) + ' · ' + E.dayNames(c.days) + ', ' + c.time_at +
+        ' · ' + E.esc(c.goal) + '. Всё ниже — из журнала уроков и платформы: что ученик получил и что делал сам.</p></div>' +
+        '<div class="e-seg no-print">' + st.cards.map(function (x) {
+          return '<button data-s="' + x.id + '"' + (x.id === c.id ? ' class="on"' : '') + '>' + E.esc(x.name) + '</button>';
+        }).join('') + '</div></div>' +
+      '<div class="e-kpis">' +
+        '<div class="e-kpi"><span>Посещаемость</span><b>' + pctTxt(f.attendance.pct) + '</b><small>' + f.attendance.held + ' из ' +
+          (f.attendance.held + f.attendance.missed) + ' по графику' + (f.attendance.disputed ? ', ' + f.attendance.disputed + ' спорн.' : '') + '</small></div>' +
+        '<div class="e-kpi ' + (pr != null && pr < 50 ? 'warn' : '') + '"><span>Готовился к уроку</span><b>' + pctTxt(pr) + '</b><small>' + f.prep.done + ' из ' + f.prep.total + ' — видео до урока</small></div>' +
+        '<div class="e-kpi ' + (hw != null && hw < 50 ? 'bad' : hw != null && hw >= 80 ? 'ok' : '') + '"><span>Домашка в платформе</span><b>' + pctTxt(hw) + '</b><small>' + f.homework.done + ' из ' + f.homework.total + '</small></div>' +
+        '<div class="e-kpi"><span>Результат заданий</span><b>' + pctTxt(f.score) + '</b><small>' + E.plural(f.tasksDone, 'набор', 'набора', 'наборов') + '</small></div>' +
+        '<div class="e-kpi"><span>Активных дней за 2 недели</span><b>' + f.activeDays14 + '</b><small>видео ' + f.videoMin + ' мин</small></div>' +
+      '</div>' +
+      '<div class="e-grid two">' +
+        '<div class="e-stack">' + lessons(f) + calendar(f) + '</div>' +
+        '<div class="e-stack">' + refundBox(f) + guarantee(f) + contract(f) + '</div>' +
+      '</div>';
+  }
+
+  draw.wire = function (root) {
+    E.on(root, '[data-s]', function (b) {
+      V.id = b.getAttribute('data-s'); V.act = false; V.all = false;
+      history.replaceState(null, '', '?s=' + V.id);
+      go();
+    });
+    E.on(root, '#calc', function () { V.act = true; go(); });
+    E.on(root, '#allEv', function () { V.all = !V.all; go(); });
+    E.on(root, '#printAct', function () { window.print(); });
+    E.on(root, '#copyAct', function (b) {
+      var text = root.querySelector('#actText').textContent;
+      (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
+        .then(function () { E.toast('Акт скопирован'); })
+        .catch(function () {
+          var r = document.createRange(); r.selectNodeContents(root.querySelector('#actText'));
+          var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+          E.toast('Текст акта выделен — скопируйте');
+        });
+    });
+    E.on(root, '#proof', function () {
+      var st = D.load(), f = D.facts(V.id);
+      var text = S.proof(f, S.guarantee(f, st.policy), { school: B.name, offer: D.OFFER, today: D.TODAY, policy: st.policy });
+      var dlg = E.open('<h2 style="margin:0 0 12px">Справка: ' + E.esc(f.card.name) + '</h2><div class="d-act">' + E.esc(text) + '</div>' +
+        '<div class="e-acts" style="margin-top:14px"><button class="e-btn" id="copyProof">Скопировать</button><button class="e-btn sec" data-close>Закрыть</button></div>');
+      dlg.querySelector('#copyProof').onclick = function () {
+        (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
+          .then(function () { E.toast('Справка скопирована'); }, function () { E.toast('Выделите текст и скопируйте'); });
+      };
+    });
+    E.on(root, '#decide', function () {
+      var st = D.load(), req = st.refunds.filter(function (x) { return x.card_id === V.id && x.status === 'open'; })[0];
+      var r = S.refund(D.facts(V.id), st.policy);
+      if (req && D.act.refund(req.id, r.refund) === 'ok') E.toast('Решено: возврат ' + E.money(r.refund) + ' по акту');
+    });
+  };
+  var go = E.mount(document.getElementById('root'), draw);
+  if (V.act) setTimeout(function () { var a = document.getElementById('act'); if (a) a.scrollIntoView({ block: 'start' }); }, 50);
+})();
+</script>
+</body>
+</html>

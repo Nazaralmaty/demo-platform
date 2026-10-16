@@ -70,10 +70,15 @@ page.on('dialog', (d) => d.accept());
 await open(page, 'demo.html');
 await page.evaluate(() => localStorage.clear());
 await open(page, 'demo.html');
-ok(flat(await page.textContent('.h-board')).includes('35650₸'), 'обложка: 35 650 ₸ к выплате');
+const board = flat(await page.textContent('.h-board'));
+ok(board.includes('34450₸'), 'обложка: 34 450 ₸ к выплате');
+ok(board.includes('56·98') && board.includes('3из7'), 'обложка: 56 уроков, 98 видео, 3 из 7 по методике');
+ok(board.includes('60000₸'), 'обложка: по акту у школы остаётся 60 000 ₸');
 ok((await page.textContent('#eNavN')).trim() === '7', 'в шапке 7 вопросов в контроле');
 
 await open(page, 'teacher.html?t=t1');
+ok(await page.locator('.e-chip', { hasText: 'видео просмотрено' }).count() === 1, 'учитель: видно, что Аяжан посмотрела видео к уроку');
+ok(await page.locator('.e-les small b', { hasText: 'домашка не сделана' }).count() >= 1, 'учитель: в журнале видно несделанную домашку');
 await page.click('button.ok[data-teach]');
 await page.waitForTimeout(150);
 ok(await page.isVisible('.e-toast.on'), 'учитель: отметка — тост');
@@ -104,15 +109,51 @@ await page.waitForTimeout(150);
 ok(await page.locator('.e-ticket', { hasText: 'Тимур' }).count() === 0, 'контроль: спор Тимура снят');
 ok((await page.textContent('#eNavN')).trim() === '6', 'контроль: в шапке 6 вопросов');
 const pay = flat(await page.textContent('.e-flow'));
-ok(pay.includes('41250₸'), 'контроль: к выплате 35 650 + 4 × 1 400 = 41 250 ₸');
+ok(pay.includes('40050₸'), 'контроль: к выплате 34 450 + 4 × 1 400 = 40 050 ₸');
 
 await open(page, 'dashboard.html');
-ok(flat(await page.textContent('.e-kpis')).includes('41250₸'), 'обзор: те же 41 250 ₸');
+ok(flat(await page.textContent('.e-kpis')).includes('40050₸'), 'обзор: те же 40 050 ₸');
+ok(flat(await page.textContent('.e-list')).includes('Аружанпроситвернуть120000₸'), 'обзор: запрос на возврат — в «требует внимания»');
+ok(flat(await page.textContent('.e-list')).includes('Тимурнеделаетдомашку'), 'обзор: Тимур без домашки — в «требует внимания»');
 await page.click('[data-card="s2"]');
 ok(await page.isVisible('dialog.e-dlg[open]'), 'обзор: журнал ученика открывается');
 ok((await page.locator('dialog .e-chip', { hasText: 'Снят' }).count()) === 1, 'обзор: в журнале Тимура урок снят');
 await page.click('#dPaid');
 ok(!flat(await page.textContent('.e-kpis')).includes('1из7'), 'обзор: оплата Тимура записана, просрочек нет');
+
+/* Методика */
+await open(page, 'metodika.html');
+ok(flat(await page.textContent('.e-kpis')).includes('3из7'), 'методика: 3 из 7 учатся по методике');
+ok(await page.locator('.e-ticket', { hasText: 'Не делает домашку' }).filter({ hasText: 'Тимур' }).count() === 1, 'методика: Тимур не делает домашку');
+ok(await page.locator('.e-ticket', { hasText: '2 урока вне программы' }).count() === 1, 'методика: два урока Ерасыла вне программы — одной карточкой');
+await page.click('tr[data-href="student.html?s=s7"]');
+await page.waitForURL(/student\.html\?s=s7/);
+ok((await page.textContent('h1')).includes('Мадина'), 'методика: строка ведёт в досье');
+
+/* Возврат: Аружан просит всю сумму */
+await open(page, 'student.html?s=s5#act');
+const act = await page.textContent('#actText');
+ok(act.includes('Оферта принята в платформе: 4 октября 2026, 19:38') && act.includes('К возврату: 60 000 ₸'), 'досье: акт из журнала, к возврату 60 000 ₸');
+ok(!(await page.textContent('#root')).includes('NaN'), 'досье: без NaN');
+await page.click('#decide');
+await page.waitForTimeout(150);
+ok(await page.locator('#act .e-chip', { hasText: 'решено' }).count() === 1, 'досье: возврат решён по акту');
+await open(page, 'guarantee.html');
+ok(flat(await page.textContent('.e-kpi.ok')).includes('Запросынавозврат0'), 'гарантии: открытых запросов нет');
+ok(flat(await page.textContent('.e-tickets')).includes('Возвращено') && flat(await page.textContent('.e-tickets')).includes('60000₸'), 'гарантии: возвращено 60 000 ₸');
+
+/* Гарантия: справка по Тимуру */
+await page.click('tr[data-proof="s2"]');
+const proof = await page.textContent('#proofText');
+ok(/Домашка в платформе: нужно не ниже 80%, по журналу 0% \(0 из \d\) — НЕ выполнено/.test(proof) && proof.includes('условия гарантии не выполнены'), 'гарантии: справка — Тимур не делал домашку');
+await page.click('dialog [data-close]');
+/* Правила школы меняют оферту и расчёт */
+await page.fill('input[name=platform_fee]', '50000');
+await page.click('#pol button[type=submit]');
+await page.waitForTimeout(150);
+ok((await page.textContent('#clause')).includes('Стоимость доступа — 50 000 ₸'), 'гарантии: правило школы — в тексте оферты');
+await open(page, 'student.html?s=s1#act');
+ok((await page.textContent('#actText')).includes('Доступ к платформе (результат интеллектуальной деятельности школы, не возвращается после первого входа): 50 000 ₸'), 'досье: акт по новым правилам');
 
 await open(page, 'notifications.html?student=s2');
 const tg = await page.textContent('#tgFeed');
@@ -128,6 +169,7 @@ await ctx.close();
 console.log('Экраны: 390 и 1280');
 const SCREENS = ['demo.html', 'dashboard.html', 'dashboard.html?view=teachers', 'dashboard.html?view=sched',
   'proverka.html', 'teacher.html', 'teacher.html?t=t3', 'notifications.html', 'confirm.html',
+  'metodika.html', 'guarantee.html', 'student.html', 'student.html?s=s2', 'student.html?s=s1#act',
   'confirm.html?t=gsc-s3-2026-10-1', 'index.html',
   'archive/v1/demo.html', 'archive/v1/dashboard.html', 'archive/v1/proverka.html', 'archive/v1/teacher.html',
   '1english/index.html', '1english/dashboard.html?demo=1', '1english/teacher.html?demo=1', '1english/confirm.html?demo=1'];

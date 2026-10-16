@@ -16,6 +16,7 @@
 <script src="config.js"></script>
 <script src="app/course.js"></script>
 <script src="app/control.js"></script>
+<script src="app/school.js"></script>
 <script src="app/data.js"></script>
 <script src="app/schedule.js"></script>
 <script src="app/eco.js"></script>
@@ -119,6 +120,19 @@
         ' не выплачиваются, пока администратор не решит</small></span>' +
         '<a class="e-btn sm" href="proverka.html">Разобрать</a></div>');
     }
+    st.refunds.filter(function (q) { return q.status === 'open'; }).forEach(function (q) {
+      var f = D.facts(q.card_id), r = SCHOOL.refund(f, st.policy);
+      items.push('<div class="e-li"><span><b>' + E.esc(f.card.name) + ' просит вернуть ' + E.money(r.paid) + '</b>' +
+        '<small class="e-small" style="display:block">по акту из журнала к возврату ' + E.money(r.refund) + ', у школы остаётся ' +
+        E.money(r.retained) + '</small></span><a class="e-btn sm" href="guarantee.html">Решить</a></div>');
+    });
+    var dev = SCHOOL.methodology(D.allFacts()).filter(function (d) { return d.kind === 'nohw'; });
+    if (dev.length) {
+      items.push('<div class="e-li"><span><b>' + dev.map(function (d) { return d.f.card.name; }).join(', ') + ' не ' +
+        (dev.length > 1 ? 'делают' : 'делает') + ' домашку</b><small class="e-small" style="display:block">' +
+        'подряд без заданий в платформе — результат и гарантия под угрозой</small></span>' +
+        '<a class="e-btn sm sec" href="metodika.html">Методика</a></div>');
+    }
     st.cards.forEach(function (c) {
       var p = D.payState(c);
       if (p.left == null || p.left > 3) return;
@@ -185,6 +199,7 @@
           '<small>' + E.esc(r.l.homework) + '</small></span></div>';
       }).join('') : '') +
       '<div class="foot"><a class="e-btn sec" href="teacher.html?t=' + t.id + '">Кабинет учителя</a>' +
+        '<a class="e-btn sec" href="student.html?s=' + card.id + '">Досье ученика →</a>' +
         '<button class="e-btn" data-close>Закрыть</button></div>');
     document.getElementById('dPaid').onclick = function () {
       D.act.paid(id); E.close(); E.toast('Оплата записана: ' + card.name);
