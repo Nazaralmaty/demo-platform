@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#135685">
+<title>GSC Study · демо-экосистема</title>
+<link rel="icon" href="assets/brand-logo.png">
+<link rel="stylesheet" href="app/style.css">
+<link rel="stylesheet" href="app/brand.css">
+<link rel="stylesheet" href="app/admin.css">
+</head>
+<body>
+<div class="g-wrap">
+  <div class="g-top">
+    <img class="g-logo" src="assets/brand-logo.png" alt="GSC Study">
+    <h1>Демо-экосистема</h1>
+    <div class="g-tabs">
+      <a class="g-mini" href="index.html" style="text-decoration:none">Платформа</a>
+    </div>
+  </div>
+
+  <div class="g-note">
+    Выдуманная школа <b>GSC Study</b>, демо-мир на 16 октября 2026 года: 7 учеников,
+    3 учителя, два отчётных периода. Всё, что нажимается, живёт в памяти вкладки.
+    Ниже — вся экосистема целиком: ученическая платформа и служебные экраны школы.
+  </div>
+
+  <div class="g-kpis">
+    <div class="g-kpi"><b>5</b><span>экранов в демо</span></div>
+    <div class="g-kpi"><b>7</b><span>учеников, 4 уровня</span></div>
+    <div class="g-kpi"><b>3</b><span>учителя</span></div>
+    <div class="g-kpi hot"><b>4</b><span>расхождения на проверке</span></div>
+  </div>
+
+  <div class="g-hub">
+    <a href="index.html"><b>Платформа ученика</b><span>4 уровня, 56 уроков с видео и разбором правила, задания, словарь флип-картами, три игры. Открывается на любом телефоне.</span><span class="go">Открыть →</span></a>
+    <a href="teacher.html"><b>Кабинет учителя</b><span>Журнал уроков, отметка «проведён», готовый урок из курса кнопкой «Взять из курса», недельный график и зарплата по месяцам.</span><span class="go">Открыть →</span></a>
+    <a href="dashboard.html"><b>Админ-кабинет</b><span>Единый дашборд: что делает каждый учитель по каждому ученику. Уровень, старт, ставка, период оплаты, начислено и на проверке.</span><span class="go">Открыть →</span></a>
+    <a href="proverka.html"><b>Контроль уроков</b><span>Ядро системы: учитель отмечает уроки, раз в две недели клиент подтверждает их, расхождения уходят администратору. Зарплата — от подтверждений.</span><span class="go">Открыть →</span></a>
+    <a href="notifications.html"><b>Система оповещений</b><span>Что приходит клиенту и администратору: запрос раз в две недели, напоминание, расхождение. Очередь отправки и журнал.</span><span class="go">Открыть →</span></a>
+  </div>
+
+  <div class="g-card" style="margin-top:16px">
+    <h3>Как устроено внутри</h3>
+    <div class="hint" style="margin-bottom:0">
+      Все экраны читают одни выдуманные данные из <b>app/data.js</b>: ученики, уроки,
+      отметки и подтверждения. Поэтому цифры на кабинете учителя, в админ-кабинете,
+      в контроле уроков и в оповещениях не могут разойтись. Темы и домашние задания
+      уроков — настоящие, из курса в <b>app/course.js</b>.
+    </div>
+  </div>
+</div>
+</body>
+</html>

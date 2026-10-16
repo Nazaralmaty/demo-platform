@@ -1,0 +1,249 @@
+/* Витрина · бренд школы. Единственный CSS под лида: ОДИН токен --brand,
+   всё остальное считается от него. style.css не трогать. */
+:root{
+  --brand:#135685;
+  --navy:var(--brand);
+  --on-navy:#FFFFFF;
+  --navy-deep:color-mix(in srgb,var(--brand) 62%,#050b14);
+  --tint:color-mix(in srgb,var(--brand) 12%,#fff);
+  --sh-1:0 1px 2px color-mix(in srgb,var(--brand) 10%,transparent), 0 6px 18px color-mix(in srgb,var(--brand) 11%,transparent);
+  --sh-2:0 2px 4px color-mix(in srgb,var(--brand) 12%,transparent), 0 16px 34px color-mix(in srgb,var(--brand) 16%,transparent);
+}
+
+/* Обложки FLUX красные: гоним в тон школы. Картинка даёт свет и тень,
+   цвет даёт фон под ней (blend luminosity). */
+.hero,.cover,.ccard .pic{background:var(--navy-deep)}
+.hero img:not(.brand),.cover img:not(.brand),.ccard .pic img{mix-blend-mode:luminosity;opacity:.5}
+.hero::after,.cover::after,.ccard .pic::after{
+  background:linear-gradient(180deg,color-mix(in srgb,var(--navy-deep) 55%,transparent) 0%,color-mix(in srgb,var(--navy-deep) 30%,transparent) 45%,color-mix(in srgb,var(--navy-deep) 85%,transparent) 100%)}
+:where(.cover,.ccard .pic) .code{background:rgba(255,255,255,.18)}
+.ccard .pic i,.cover p{color:color-mix(in srgb,var(--brand) 35%,#fff)}
+
+/* Стартовый экран */
+.demo-tag{display:inline-block;align-self:flex-start;font-size:12px;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--navy);background:var(--tint);border-radius:999px;
+  padding:5px 12px;margin-bottom:14px}
+.agree{display:flex;gap:10px;align-items:flex-start;margin:16px 0 4px;font-size:14px;
+  color:var(--muted)}
+.agree input{width:20px;height:20px;margin-top:1px;accent-color:var(--navy)}
+.agree b{color:var(--navy);text-decoration:underline;cursor:pointer}
+
+/* Карточка-заглушка вместо видео */
+.teaser-card{background:var(--card);border-radius:var(--r-card);box-shadow:var(--sh-1);
+  padding:26px 20px;margin-bottom:12px;text-align:left}
+.teaser-card .playring{width:58px;height:58px;border-radius:50%;background:var(--navy);
+  display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.teaser-card .playring svg{width:22px;height:22px;fill:#fff;margin-left:3px}
+.teaser-card h3{font-size:19px;margin-bottom:8px}
+.teaser-card p{font-size:14.5px;color:var(--muted);line-height:1.55;margin-bottom:16px}
+
+/* Карточка-заглушка вместо заданий */
+.upsell-card{background:var(--card);border-radius:var(--r-card);box-shadow:var(--sh-1);
+  padding:26px 20px;margin-bottom:12px}
+.upsell-card .kick{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--navy);margin-bottom:10px}
+.upsell-card h3{font-size:19px;margin-bottom:8px}
+.upsell-card p{font-size:14.5px;color:var(--muted);line-height:1.55;margin-bottom:16px}
+
+/* Старт: лого рядом с именем, видео сразу под текстом */
+.start{min-height:auto;padding-top:8px}
+.start-head{display:flex;align-items:center;gap:14px;margin-bottom:10px}
+.start .logo-badge{width:64px;height:64px;border-radius:18px;margin:0;flex:none}
+.start-head h1{margin:0}
+.start-video{margin-bottom:12px}
+.chips-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.chips-row span{font-size:13px;font-weight:700;color:var(--navy);background:var(--tint);
+  border-radius:999px;padding:6px 12px}
+
+/* Одна кнопка связи: пилюля над таб-баром, не перекрывает шеврон карточек */
+.cta-float{position:fixed;right:max(14px,calc(50% - 226px));
+  bottom:calc(66px + 12px + env(safe-area-inset-bottom));z-index:50}
+.cta-float a{display:flex;align-items:center;gap:8px;height:44px;padding:0 18px;border-radius:999px;
+  background:var(--navy);color:#fff;font-weight:800;font-size:14px;text-decoration:none;
+  box-shadow:var(--sh-2);white-space:nowrap}
+.cta-float svg{width:20px;height:20px}
+body:has(.tabs.off) .cta-float{display:none}
+
+/* GSC Study · тема. Снята с gscstudy.com (CSS-переменные, computed-стили, скриншоты): белое и воздушное поле,
+   океан-синий #135685 + пурпур #B1005A, золото #EAC35D и зелёный #37814C как сплошные плитки, мауве #F0EBEC карточки,
+   огромные плотные заглавные заголовки (у них Futura PT, у нас Montserrat с казахскими буквами), кнопка 12px, карточки 30px,
+   без теней, рисованные восковые петли, волна-стрелка «~~→», закладка-флажок, розовый цветок.
+   Структура экранов общая; здесь меняется всё, что видно. Светлая и тёмная темы — обе настоящие. */
+@font-face{font-family:'Montserrat';font-weight:100 900;font-display:swap;src:url('../assets/fonts/montserrat-cyrillic-ext.woff2') format('woff2');
+  unicode-range:U+0460-052F,U+1C80-1C88,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F}
+@font-face{font-family:'Montserrat';font-weight:100 900;font-display:swap;src:url('../assets/fonts/montserrat-cyrillic.woff2') format('woff2');
+  unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Montserrat';font-weight:100 900;font-display:swap;src:url('../assets/fonts/montserrat-latin.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+:root{
+  color-scheme:light;
+  --gold:#EAC35D; --gold-d:#C79A28; --pink:#F46899; --green:#37814C; --mag:#B1005A; --ocean:#135685; --mauve:#F0EBEC;
+  --field:#EFEAEB; --bg:#FAF9F7; --card:#FFFFFF; --ink:#1A1C1B; --muted:#585E65;
+  --faint:#9AA1A8; --line:#E4DFE0; --track:#E9E4E5; --soft:#E6EFF6; --edge:#E6E1E2;
+  --navy:#135685; --on-navy:#FFFFFF; --navy-deep:#0E4469;
+  --danger:#C62828; --accent:#B1005A; --accent-soft:#FBE4EE; --accent-ink:#B1005A; --ok:#2F7A46; --ok-soft:#E1F0E6;
+  --tab-bg:rgba(255,255,255,.97); --on-accent:#FFFFFF; --start-bg:#FFFFFF; --start-ink:#135685; --btn:#B1005A; --btn-on:#FFFFFF; --chip-line:rgba(19,86,133,.42);
+  --r-card:30px; --r-chip:12px;
+  --sh-1:none; --sh-2:none;
+  --head:'Montserrat','Golos Text',sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --field:#061A2B; --bg:#0A2438; --card:#103250; --ink:#F4F0F0; --muted:#A9BDCE;
+    --faint:#6B8AA5; --line:#1E4C72; --track:#1E4C72; --soft:#15426B; --edge:#1E4C72;
+    --navy:#8FC8F5; --on-navy:#06192C; --navy-deep:#0A3556;
+    --danger:#FF8A80; --accent:#F46899; --accent-soft:#3B1B2E; --accent-ink:#FF9CBE; --ok:#62C482; --ok-soft:#133522;
+    --tab-bg:rgba(10,36,56,.97); --on-accent:#0A2438; --start-bg:#0A2438; --start-ink:#EAF4FD; --btn:#C4106F; --btn-on:#FFFFFF; --chip-line:rgba(143,200,245,.45);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --field:#061A2B; --bg:#0A2438; --card:#103250; --ink:#F4F0F0; --muted:#A9BDCE;
+  --faint:#6B8AA5; --line:#1E4C72; --track:#1E4C72; --soft:#15426B; --edge:#1E4C72;
+  --navy:#8FC8F5; --on-navy:#06192C; --navy-deep:#0A3556;
+  --danger:#FF8A80; --accent:#F46899; --accent-soft:#3B1B2E; --accent-ink:#FF9CBE; --ok:#62C482; --ok-soft:#133522;
+  --tab-bg:rgba(10,36,56,.97); --on-accent:#0A2438; --start-bg:#0A2438; --start-ink:#EAF4FD; --btn:#C4106F; --btn-on:#FFFFFF; --chip-line:rgba(143,200,245,.45);
+}
+body{letter-spacing:0}
+.app{box-shadow:0 0 0 1px rgba(19,86,133,.08)}
+
+/* Заголовки: плотные заглавные, как у них */
+h1,h2,h3,.sect,.chip,.tab,.sgrp,.kick,.demo-tag,.ccard .pic b,.cover h2,.mark,.pct,.big,.score,.code{font-family:var(--head)}
+h1{font-size:30px;line-height:1.02;font-weight:800;letter-spacing:-.035em}
+.head h1{font-size:22px;line-height:1.08;text-transform:uppercase;letter-spacing:-.03em}
+h2{font-weight:800;letter-spacing:-.025em}
+.q{font-family:var(--head);font-weight:700;font-size:23px;letter-spacing:-.02em}
+.wcard .en,.flip .en{font-family:var(--head);font-weight:800;letter-spacing:-.03em}
+
+/* Кнопки: пурпур, 12px, плоско. Вторая кнопка — контур, как «Узнать свой уровень» */
+.btn{background:var(--btn);color:var(--btn-on);border-radius:12px;font-weight:700;font-size:17px;letter-spacing:-.005em;box-shadow:none}
+.btn:active{transform:scale(.98)}
+.btn[disabled]{opacity:.5;box-shadow:none}
+.btn.ghost{background:transparent;color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent)}
+.btn.quiet{background:transparent;color:var(--navy);box-shadow:inset 0 0 0 1.5px var(--chip-line)}
+.btn.danger{background:transparent;color:var(--danger);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--danger) 45%,transparent)}
+.dock .btn.ghost{background:var(--card)}
+.iconbtn{border:1.5px solid var(--edge);box-shadow:none;background:var(--card)}
+
+/* Карточки: плоские, 30px, тонкий контур вместо тени */
+.item,.card,.summary,.rule,.group,.rtext,.wcard,.row,.why,.tok,.line{border:1.5px solid var(--edge);box-shadow:none}
+.item,.summary,.group,.wcard,.rtext,.rule{border-radius:var(--r-card)}
+.why{border-radius:20px}
+.wcard,.flip .face{box-shadow:none}
+.flip .face{border:1.5px solid var(--edge)}
+.opt{border-radius:14px;font-weight:600}
+.opt.ok{background:var(--ok);color:#fff;box-shadow:none}
+.opt.no{background:var(--accent);color:var(--on-accent);box-shadow:none}
+.q .gap{color:var(--accent)}
+
+/* Номера и метки: плашки цветов сайта — синяя, пурпурная, зелёная */
+.mark{border-radius:16px;background:var(--soft);color:var(--navy);font-weight:800;font-size:18px}
+.mark.on{background:var(--navy);color:var(--on-navy)}
+.mark.done{background:var(--green);color:#fff}
+.smark{border-radius:14px;background:var(--soft);color:var(--navy)}
+.smark.done{background:var(--green);color:#fff}
+.item.on{border-color:var(--navy)}
+.bar{height:10px;background:var(--track)}.bar i{background:var(--accent)}
+.steps i{height:6px}.steps i.on{background:var(--accent)}
+.sgrp{color:var(--navy);font-size:12.5px;font-weight:800;letter-spacing:.09em}
+.summary .big{color:var(--navy);font-size:44px;font-weight:800;letter-spacing:-.04em}
+.ccard .pct{color:var(--accent);font-size:22px;font-weight:800;letter-spacing:-.03em}
+.chip{box-shadow:none;background:transparent;border:1.5px solid var(--chip-line);color:var(--navy);font-weight:600}
+.chip.accent{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.chip.ok{background:var(--green);border-color:var(--green);color:#fff}
+.step b{font-weight:700}
+.rw{color:var(--navy)}
+
+/* Нижние вкладки: активная — синяя таблетка под иконкой */
+.tabs{border-top:1.5px solid var(--edge);box-shadow:none}
+.tab{font-family:var(--head);font-size:11.5px;font-weight:700;letter-spacing:.01em;color:var(--muted)}
+.tab svg{width:54px;height:30px;padding:4px 16px;border-radius:999px;box-sizing:border-box;transition:background .2s}
+.tab.on{color:var(--navy)}
+.tab.on svg{background:var(--navy);color:var(--on-navy)}
+
+/* Обложки: сплошные поля цветов сайта, рисованная сцена справа, без вуали */
+.hero,.cover,.ccard .pic{background:var(--ocean)}
+.hero img:not(.brand),.cover img:not(.brand),.ccard .pic img{mix-blend-mode:normal;opacity:1}
+.hero::after,.cover::after,.ccard .pic::after{background:none}
+.ccard[data-lv="beginner"] .pic,.cover[data-lv="beginner"]{background:var(--mauve)}
+.ccard[data-lv="elementary"] .pic,.cover[data-lv="elementary"]{background:var(--green)}
+.ccard[data-lv="pre-intermediate"] .pic,.cover[data-lv="pre-intermediate"]{background:var(--gold)}
+.ccard[data-lv="intermediate"] .pic,.cover[data-lv="intermediate"]{background:var(--mag)}
+.hero{border-radius:0 0 44px 44px}
+.hero .brand{height:30px;opacity:1}
+.hero .lang{background:rgba(255,255,255,.96)}
+.hero .lang button{color:#585E65;font-family:var(--head);font-size:13px;font-weight:700}
+.hero .lang button.on{background:var(--mag);color:#fff}
+.ava.logo{background:#fff;border:4px solid var(--bg);border-radius:30px;box-shadow:none;margin-top:-48px;overflow:hidden}
+.ava.logo img{object-fit:contain}
+.who h2{font-size:26px;text-transform:uppercase;letter-spacing:-.035em;line-height:1.05;color:var(--navy)}
+.ava.logo + .who h2{font-size:30px;width:fit-content;margin:0 auto;
+  background:linear-gradient(90deg,var(--navy) 0 47%,var(--accent) 47%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sect{text-transform:uppercase;letter-spacing:-.025em;font-size:20px;font-weight:800;color:var(--navy);display:flex;align-items:center;gap:12px}
+.sect::after{content:'';flex:none;width:58px;height:18px;background:var(--accent);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 80 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%223.2%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M3 14 q6 -12 12 0 t12 0 t12 0 t12 0%22/%3E%3Cpath d=%22M58 6 L72 13 L58 20%22/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 80 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%223.2%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M3 14 q6 -12 12 0 t12 0 t12 0 t12 0%22/%3E%3Cpath d=%22M58 6 L72 13 L58 20%22/%3E%3C/svg%3E") center/contain no-repeat}
+.ccard,.cover{border:0;box-shadow:none;border-radius:var(--r-card)}
+.ccard{border:1.5px solid var(--edge)}
+.ccard .code,.cover .code{background:var(--ocean);color:#fff;font-weight:800;font-size:13px;letter-spacing:.08em}
+.ccard .pic b,.cover h2{color:#fff;font-weight:800;letter-spacing:-.04em;text-shadow:none}
+.ccard .pic b{font-size:clamp(24px,7.3vw,28px);line-height:1}
+.ccard .pic b.long{font-size:clamp(19px,5.8vw,22px)}
+.cover h2{font-size:clamp(24px,7.3vw,28px);line-height:1}
+.cover h2.long{font-size:clamp(19px,5.8vw,22px)}
+.ccard .pic i,.cover p{color:#fff;font-weight:700;font-style:normal}
+.ccard[data-lv="beginner"] .pic b,.cover[data-lv="beginner"] h2,
+.ccard[data-lv="pre-intermediate"] .pic b,.cover[data-lv="pre-intermediate"] h2{color:#135685}
+.ccard[data-lv="beginner"] .pic i,.cover[data-lv="beginner"] p{color:#2E3A44}
+.ccard[data-lv="pre-intermediate"] .pic i,.cover[data-lv="pre-intermediate"] p{color:#0B3350}
+.ccard[data-lv="elementary"] .code{background:#fff;color:#2D6E40}
+.ccard[data-lv="intermediate"] .code{background:#fff;color:#B1005A}
+.cover[data-lv="elementary"] .code{background:#fff;color:#2D6E40}
+.cover[data-lv="intermediate"] .code{background:#fff;color:#B1005A}
+.cover[data-lv="beginner"] .swap,.cover[data-lv="pre-intermediate"] .swap{color:#135685;opacity:.8}
+.cover .brand{display:none}
+.ccard .foot b{font-family:var(--head);font-weight:700;letter-spacing:-.02em}
+
+/* Старт: белое воздушное поле сайта, закладка, восковая петля, видео — карточка с рамкой из четырёх цветов */
+body:has(.start) .app{background:var(--start-bg);overflow:hidden}
+.start{padding-top:8px;position:relative;color-scheme:light dark}
+.start::before{content:'';position:absolute;right:-90px;top:262px;width:340px;height:243px;pointer-events:none;opacity:.95;
+  background:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 420 300%22%3E%3Cdefs%3E%3Cfilter id=%22r%22 x=%22-10%25%22 y=%22-10%25%22 width=%22120%25%22 height=%22120%25%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%22.04%22 numOctaves=%222%22 seed=%223%22 result=%22n%22/%3E%3CfeDisplacementMap in=%22SourceGraphic%22 in2=%22n%22 scale=%226%22/%3E%3C/filter%3E%3C/defs%3E%3Cpath d=%22M377.6 198.2L372.0 207.5L365.1 216.4L357.1 224.9L348.0 232.9L337.8 240.3L326.7 247.0L314.7 253.0L302.0 258.2L288.7 262.6L274.8 266.1L260.6 268.8L246.2 270.6L231.6 271.5L217.1 271.5L202.7 270.7L188.6 269.0L174.8 266.6L161.5 263.4L148.7 259.5L136.4 255.0L124.9 249.8L114.0 244.2L103.8 238.0L94.4 231.4L85.8 224.4L78.0 217.0L71.0 209.4L64.8 201.4L59.4 193.2L54.9 184.7L51.2 176.1L48.5 167.3L46.6 158.4L45.6 149.4L45.6 140.4L46.6 131.3L48.5 122.3L51.5 113.3L55.5 104.4L60.5 95.8L66.6 87.4L73.7 79.3L81.8 71.6L90.8 64.3L100.8 57.6L111.7 51.5L123.4 46.0L135.8 41.3L148.8 37.3L162.3 34.1L176.2 31.8L190.3 30.4L204.5 29.8L218.8 30.1L232.9 31.4L246.8 33.4L260.3 36.4L273.2 40.1L285.6 44.5L297.3 49.7L308.2 55.5L318.3 61.8L327.5 68.7L335.8 76.0L343.2 83.6L349.5 91.6L354.9 99.8L359.4 108.3L362.8 116.8L365.3 125.4L366.9 134.1L367.6 142.8L367.4 151.5L366.3 160.1L364.4 168.6L361.6 177.0L358.0 185.3L353.5 193.4L348.2 201.2L342.1 208.8L335.2 216.1L327.4 223.1L318.9 229.7L309.7 235.9L299.7 241.6L289.0 246.8L277.6 251.4L265.7 255.4L253.3 258.8L240.4 261.4L227.1 263.2L213.7 264.3L200.1 264.5L186.5 263.9L172.9 262.5L159.7 260.2L146.7 257.1L134.2 253.3L122.4 248.6L111.2 243.3L100.8 237.3L91.3 230.7L82.7 223.6L75.1 216.0L68.6 208.0L63.2 199.7L58.8 191.2L55.6 182.5L53.5 173.7L52.4 165.0L52.4 156.2L53.3 147.5L55.3 139.0L58.1 130.7L61.9 122.6L66.4 114.8L71.8 107.2L77.8 100.0L84.6 93.1L92.0 86.5L100.1 80.3L108.8 74.6L118.0 69.2L127.7 64.3L138.0 59.8L148.7 55.9L159.9 52.4L171.5 49.5L183.4 47.2L195.6 45.5L208.0 44.4L220.6 44.0L233.3 44.4L245.9 45.4L258.5 47.1L270.8 49.6L282.9 52.8L294.5 56.8L305.6 61.4L316.1 66.7%22 fill=%22none%22 stroke=%22%23EAC35D%22 stroke-width=%2212%22 stroke-linecap=%22round%22 filter=%22url(%23r)%22/%3E%3C/svg%3E") center/contain no-repeat}
+.start::after{content:'';position:absolute;right:6px;top:14px;width:44px;height:44px;pointer-events:none;
+  background:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22 fill=%22%23F46899%22%3E%3Ccircle cx=%2281.0%22 cy=%2250.0%22 r=%2220%22/%3E%3Ccircle cx=%2271.9%22 cy=%2271.9%22 r=%2220%22/%3E%3Ccircle cx=%2250.0%22 cy=%2281.0%22 r=%2220%22/%3E%3Ccircle cx=%2228.1%22 cy=%2271.9%22 r=%2220%22/%3E%3Ccircle cx=%2219.0%22 cy=%2250.0%22 r=%2220%22/%3E%3Ccircle cx=%2228.1%22 cy=%2228.1%22 r=%2220%22/%3E%3Ccircle cx=%2250.0%22 cy=%2219.0%22 r=%2220%22/%3E%3Ccircle cx=%2271.9%22 cy=%2228.1%22 r=%2220%22/%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2235%22/%3E%3C/svg%3E") center/contain no-repeat}
+.start > *{position:relative;z-index:1}
+.demo-tag{background:var(--soft);color:var(--navy);font-weight:700;font-size:12.5px;letter-spacing:.02em;text-transform:none;padding:7px 14px}
+.start-head{margin:6px 0 14px;gap:14px}
+.start .logo-badge{width:76px;height:76px;border-radius:22px;border:1.5px solid var(--edge);background:#fff;object-fit:contain}
+.start-head h1{font-size:46px;text-transform:uppercase;letter-spacing:-.05em;line-height:.92;width:fit-content;
+  background:linear-gradient(180deg,var(--start-ink) 0 52%,var(--accent) 52%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.start .sub{color:var(--muted);font-size:16px;font-weight:500}
+.frame.start-video{border:0;border-radius:34px;padding:12px;aspect-ratio:auto;height:auto;transform:rotate(-2deg);margin:10px 4px 16px;
+  background:linear-gradient(135deg,var(--pink) 0 26%,var(--mag) 26% 50%,var(--gold) 50% 74%,var(--green) 74%);box-shadow:none}
+.start-video video{position:static;display:block;width:100%;height:auto;aspect-ratio:16/9;border-radius:24px;background:#000}
+.chips-row span{background:transparent;border:1.5px solid var(--chip-line);color:var(--navy);font-family:var(--head);font-size:12.5px;font-weight:700;border-radius:999px;padding:7px 13px}
+.chips-row span:nth-child(3){background:var(--green);border-color:var(--green);color:#fff}
+.chips-row span:nth-child(1){background:var(--navy);border-color:var(--navy);color:var(--on-navy)}
+.agree{color:var(--muted);font-weight:500}
+.agree b{color:var(--accent)}
+.agree input{accent-color:var(--accent)}
+.view{overflow-x:clip}
+.view:not(.plain){padding-bottom:calc(var(--tab-h) + 84px + env(safe-area-inset-bottom))}
+
+/* Заглушки и карточки продаж: плитки золото и океан, как «Образование за рубежом» и секции сайта */
+.teaser-card{background:var(--ocean);border:0;border-radius:var(--r-card)}
+.teaser-card h3{color:#fff}.teaser-card p{color:rgba(255,255,255,.82)}
+.teaser-card .playring{background:var(--gold);box-shadow:none}
+.teaser-card .playring svg{fill:#135685}
+.upsell-card{background:var(--gold);border:0;border-radius:var(--r-card)}
+.upsell-card .kick{color:#8A0045;font-size:12.5px;font-weight:800;letter-spacing:.09em}
+.upsell-card h3{color:#0B3350;font-weight:800;letter-spacing:-.025em}
+.upsell-card p{color:#2D3A44}
+.upsell-card .btn{background:#135685;color:#fff}
+.frame{border:0;border-radius:var(--r-card);box-shadow:none;background:#000}
+
+/* Одна кнопка связи: зелёная, как их виджет WhatsApp */
+.cta-float a{background:var(--green);color:#fff;font-family:var(--head);font-weight:800;font-size:14px;letter-spacing:.01em;
+  box-shadow:0 8px 14px 2px rgba(0,0,0,.25)}
+.demo-strip{background:var(--mag)}

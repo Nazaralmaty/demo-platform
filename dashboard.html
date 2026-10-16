@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#135685">
+<title>GSC Study · админ-кабинет</title>
+<link rel="icon" href="assets/brand-logo.png">
+<link rel="stylesheet" href="app/style.css">
+<link rel="stylesheet" href="app/brand.css">
+<link rel="stylesheet" href="app/admin.css">
+</head>
+<body>
+<div class="g-wrap" id="root"></div>
+
+<script src="app/course.js"></script>
+<script src="app/data.js"></script>
+<script src="app/schedule.js"></script>
+<script>
+(function () {
+  'use strict';
+  var G = window.GSC;
+  var SCHED = window.SCHED;
+
+  var root = document.getElementById('root');
+  var S = { view: 'overview', teacher: 't1', log: G.seedLog.slice() };
+
+  function each(sel, fn) { Array.prototype.forEach.call(root.querySelectorAll(sel), fn); }
+  function say(text) {
+    var el = document.getElementById('gToast');
+    if (!el) return;
+    el.textContent = text; el.style.display = 'block';
+    clearTimeout(say._t);
+    say._t = setTimeout(function () { el.style.display = 'none'; }, 3000);
+  }
+  function log(text) {
+    S.log.unshift({ at: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }), text: text });
+    if (S.view === 'overview') render();
+  }
+
+  function render() {
+    root.innerHTML =
+      '<div class="g-top">' +
+        '<img class="g-logo" src="assets/brand-logo.png" alt="">' +
+        '<h1>Админ-кабинет</h1>' +
+        '<div class="g-tabs">' +
+          '<button data-view="overview"' + (S.view === 'overview' ? ' class="on"' : '') + '>Обзор</button>' +
+          '<button data-view="students"' + (S.view === 'students' ? ' class="on"' : '') + '>Ученики</button>' +
+          '<button data-view="teachers"' + (S.view === 'teachers' ? ' class="on"' : '') + '>Учителя</button>' +
+          '<button data-view="sched"'    + (S.view === 'sched'    ? ' class="on"' : '') + '>Графики</button>' +
+        '</div>' +
+        '<a class="g-mini" href="demo.html" style="text-decoration:none">К демо</a>' +
+      '</div>' +
+      '<div id="gToast" class="g-toast"></div>' +
+      '<div class="g-note">Единый дашборд: что делает каждый учитель по каждому ученику — ' +
+        'уровень, дата старта, ставка и период оплаты свои у каждого, на общем списке они терялись. ' +
+        'Начисление идёт по отметкам учителя, выплата — по подтверждениям клиента.</div>' +
+
+      (S.view === 'overview' ? viewOverview()
+       : S.view === 'students' ? viewStudents()
+       : S.view === 'teachers' ? viewTeachers()
+       : viewSched());
+
+    each('[data-view]', function (b) {
+      b.onclick = function () { S.view = b.getAttribute('data-view'); render(); };
+    });
+    if (S.view === 'sched') {
+      var pick = root.querySelector('#pick');
+      if (pick) pick.onchange = function () { S.teacher = pick.value; render(); };
+    }
+    var clear = root.querySelector('[data-clear]');
+    if (clear) clear.onclick = function () {
+      S.log = [];
+      log('Журнал очищен администратором');
+      say('Журнал очищен');
+    };
+  }
+
+  /* ── обзор ────────────────────────────────────────────────────────── */
+  function viewOverview() {
+    var all = G.totals();
+    var tk = G.tickets();
+
+    return '<div class="g-kpis">' +
+        '<div class="g-kpi"><b>' + G.students.length + '</b><span>учеников, 4 уровня</span></div>' +
+        '<div class="g-kpi"><b>' + G.teachers.length + '</b><span>учителя</span></div>' +
+        '<div class="g-kpi"><b>' + G.money(all.accrued) + '</b><span>начислено в октябре</span></div>' +
+        '<div class="g-kpi green"><b>' + G.money(all.confirmed) + '</b><span>подтверждено к выплате</span></div>' +
+        '<div class="g-kpi hot"><b>' + G.money(all.hold) + '</b><span>на проверке</span></div>' +
+        '<div class="g-kpi hot"><b>' + tk.length + '</b><span>расхождений в очереди</span></div>' +
+      '</div>' +
+
+      '<div class="g-card"><h3>Расхождения, ждущие разбора</h3>' +
+        '<div class="hint">Живут в контроле уроков — отсюда видно, что система уже сама их собрала. ' +
+          'Пока администратор не разобрался, эти деньги не выплачиваются.</div>' +
+        '<div class="g-acts">' +
+          '<a class="g-btn" href="proverka.html?view=admin" style="text-decoration:none">Открыть очередь (' + tk.length + ')</a>' +
+          '<a class="g-btn quiet" href="notifications.html" style="text-decoration:none">Система оповещений</a>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="g-card"><h3>Журнал событий</h3>' +
+        '<div class="g-log">' + S.log.slice(0, 8).map(function (r) {
+          return '<div><b>' + r.at + '</b> · ' + G.esc(r.text) + '</div>';
+        }).join('') + '</div>' +
+        '<div class="g-acts"><button class="g-mini" data-clear="1">Очистить журнал</button></div>' +
+      '</div>' +
+
+      '<div class="g-card"><h3>Демо-экосистема</h3>' +
+        '<div class="g-hub" style="margin-top:0">' +
+          '<a href="index.html"><b>Платформа ученика</b><span>4 уровня, 56 уроков, словарь, игры.</span><span class="go">Открыть →</span></a>' +
+          '<a href="teacher.html"><b>Кабинет учителя</b><span>Журнал, отметки, зарплата.</span><span class="go">Открыть →</span></a>' +
+          '<a href="proverka.html"><b>Контроль уроков</b><span>Подтверждение клиентом, очередь.</span><span class="go">Открыть →</span></a>' +
+          '<a href="notifications.html"><b>Система оповещений</b><span>Запросы, напоминания, расхождения.</span><span class="go">Открыть →</span></a>' +
+        '</div></div>';
+  }
+
+  /* ── ученики: единая таблица ─────────────────────────────────────── */
+  function viewStudents() {
+    var rows = G.students.map(function (s) {
+      var st = G.stat(s);
+      var t = G.byTeacher(s.teacher);
+      return '<tr>' +
+        '<td><b>' + G.esc(s.name) + '</b><br><span style="color:var(--muted);font-size:12px">' + G.esc(G.phoneFmt(s.phone)) + '</span></td>' +
+        '<td>' + G.esc(t.name) + '</td>' +
+        '<td>' + G.esc(G.courseBadge(s)) + '</td>' +
+        '<td>' + G.dateRu(s.started) + '</td>' +
+        '<td>' + G.esc(G.dayNames(s.days)) + ', ' + G.esc(s.time) + '</td>' +
+        '<td>' + G.esc(s.pay) + ' · ' + G.money(s.rate) + '</td>' +
+        '<td class="num">' + st.lessons + '</td>' +
+        '<td class="num">' + st.okCount + '</td>' +
+        '<td class="num">' + (st.disputes || '—') + '</td>' +
+        '<td class="num">' + G.money(st.confirmed) + '</td>' +
+        '<td class="num">' + (st.hold ? G.money(st.hold) : '—') + '</td></tr>';
+    }).join('');
+    var all = G.totals();
+
+    return '<div class="g-card"><h3>Все ученики</h3>' +
+      '<div class="hint">Одна строка — один ученик. «К выплате» — подтверждено клиентом, ' +
+        '«на проверке» — спор, молчание или открытый период.</div>' +
+      '<div class="scrollx"><table><thead><tr>' +
+        '<th>Ученик</th><th>Учитель</th><th>Уровень</th><th>Старт</th><th>График</th>' +
+        '<th>Оплата</th><th class="num">В журнале</th><th class="num">Подтв.</th><th class="num">Спор</th>' +
+        '<th class="num">К выплате</th><th class="num">На проверке</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody>' +
+      '<tfoot><tr><td colspan="7">Итого, ' + G.students.length + ' учеников</td>' +
+        '<td class="num">' + all.lessons + '</td><td colspan="2"></td>' +
+        '<td class="num">' + G.money(all.confirmed) + '</td>' +
+        '<td class="num">' + G.money(all.hold) + '</td></tr></tfoot></table></div></div>';
+  }
+
+  /* ── учителя ─────────────────────────────────────────────────────── */
+  function viewTeachers() {
+    var rows = G.teachers.map(function (t) {
+      var live = G.students.filter(function (s) { return s.teacher === t.id; });
+      var acc = 0, conf = 0, hold = 0, les = 0;
+      live.forEach(function (s) {
+        var st = G.stat(s);
+        acc += st.accrued; conf += st.confirmed; hold += st.hold; les += st.lessons;
+      });
+      return '<tr>' +
+        '<td><b>' + G.esc(t.name) + '</b><br><span style="color:var(--muted);font-size:12px">' + G.esc(G.phoneFmt(t.phone)) + '</span></td>' +
+        '<td class="num">' + G.money(t.rate) + '</td>' +
+        '<td class="num">' + live.length + '</td>' +
+        '<td class="num">' + les + '</td>' +
+        '<td class="num">' + G.money(conf) + '</td>' +
+        '<td class="num">' + (hold ? G.money(hold) : '—') + '</td></tr>';
+    }).join('');
+    var all = G.totals();
+
+    return '<div class="g-card"><h3>Учителя</h3>' +
+      '<div class="hint">К выплате — уроки, подтверждённые клиентами. На проверке — спорные, ' +
+        'без ответа и открытый период.</div>' +
+      '<div class="scrollx"><table><thead><tr>' +
+        '<th>Учитель</th><th class="num">Ставка</th><th class="num">Учеников</th>' +
+        '<th class="num">В журнале</th><th class="num">К выплате</th><th class="num">На проверке</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody>' +
+      '<tfoot><tr><td>Итого</td><td></td><td class="num">' + G.students.length + '</td>' +
+        '<td class="num">' + all.lessons + '</td>' +
+        '<td class="num">' + G.money(all.confirmed) + '</td>' +
+        '<td class="num">' + G.money(all.hold) + '</td></tr></tfoot></table></div></div>' +
+
+      '<div class="g-card"><h3>Кабинет учителя</h3>' +
+      '<div class="g-acts" style="margin-top:0"><a class="g-btn" href="teacher.html" style="text-decoration:none">Открыть →</a></div></div>';
+  }
+
+  /* ── графики ─────────────────────────────────────────────────────── */
+  function viewSched() {
+    var t = G.byTeacher(S.teacher);
+    var cards = G.students
+      .filter(function (s) { return s.teacher === S.teacher; })
+      .map(function (s) {
+        return { name: s.name, days: s.days, time_at: s.time, format: 'individual', archived: false };
+      });
+
+    return '<div class="g-card"><h3>Неделя</h3>' +
+      '<div class="hint">Синее — занято, зелёное — свободно. Запись учеников ведёт администратор.</div>' +
+      '<select class="g-field" id="pick" style="width:auto;min-width:230px;margin-bottom:14px">' +
+        G.teachers.map(function (x) {
+          return '<option value="' + x.id + '"' + (x.id === S.teacher ? ' selected' : '') + '>' +
+                 G.esc(x.name) + '</option>';
+        }).join('') +
+      '</select>' +
+      SCHED.grid(t, cards, false) +
+    '</div>';
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>

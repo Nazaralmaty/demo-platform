@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>GSC Study · Порядок слов</title>
+<script src="../app/games-theme.js"></script>
+<link rel="stylesheet" href="../assets/app.css">
+<style>
+  /* Единственная механика, которой нет ни в одной перенесённой арене:
+     порядок слов. Именно он ломается у казахоязычного ребёнка первым —
+     в казахском глагол в конце, в английском после подлежащего. */
+  body{background:linear-gradient(160deg,#0E5A38,#052B1B);color:#fff;overflow:hidden}
+  .g{max-width:480px;margin:0 auto;height:100svh;display:flex;flex-direction:column;
+     padding:calc(10px + env(safe-area-inset-top)) 16px calc(14px + env(safe-area-inset-bottom))}
+  .hud{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+  .hud .pill{background:rgba(255,255,255,.14);color:#fff}
+  .kk{font-size:19px;font-weight:800;text-align:center;opacity:.9;margin:14px 8px 12px;line-height:1.3}
+  .line{min-height:96px;background:rgba(255,255,255,.08);border:2px dashed rgba(255,255,255,.22);
+        border-radius:18px;padding:12px;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start}
+  .line.ok{border-style:solid;border-color:#3BC77C;background:rgba(59,199,124,.18)}
+  .line.no{border-style:solid;border-color:#E8536F;background:rgba(232,83,111,.18)}
+  .bank{flex:1;display:flex;flex-wrap:wrap;gap:9px;align-content:flex-start;padding:18px 2px}
+  .t{background:#fff;color:#0A3161;border-radius:13px;padding:11px 14px;font-weight:800;font-size:17px;
+     box-shadow:0 3px 0 rgba(0,0,0,.18);transition:.12s var(--ease)}
+  .t:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.18)}
+  .t.used{opacity:.25;pointer-events:none}
+  .t.small{font-size:15px;padding:9px 12px;box-shadow:none}
+  .row2{display:flex;gap:9px}
+  .btn2{flex:1;background:rgba(255,255,255,.16);border-radius:15px;padding:14px;font-weight:800;color:#fff}
+  .btn2.main{background:#fff;color:#0E5A38}
+  .end{text-align:center;padding:24px}
+</style>
+<link rel="stylesheet" href="../app/games-theme.css">
+</head>
+<body>
+<div class="g">
+  <div class="hud">
+    <a class="pill" href="#" id="x">✕</a>
+    <div class="pill" id="sc">1 / 6</div>
+    <div class="pill" id="hp" style="margin-left:auto">⭐️ 0</div>
+  </div>
+  <div id="stage">
+    <div class="kk" id="kk">…</div>
+    <div class="line" id="line"></div>
+    <div class="bank" id="bank"></div>
+    <div class="row2">
+      <button class="btn2" id="undo">↩ Назад</button>
+      <button class="btn2 main" id="ck">Проверить</button>
+    </div>
+  </div>
+</div>
+<script src="../assets/app.js"></script>
+<script src="../app/course.js"></script>
+<script src="../app/words_bridge.js"></script>
+<script src="bridge.js"></script>
+<script>
+(function(){
+  var $ = App.$;
+  document.getElementById('x').href = window.SL_BACK;
+
+  var q = App.qs('u');
+  var pool = (q ? WORDS.filter(function(w){ return w.u === q; }) : WORDS)
+             .filter(function(w){ return w.ex && w.ex.split(' ').length >= 4; });
+  if (pool.length < 6) pool = WORDS.filter(function(w){ return w.ex.split(' ').length >= 4; });
+  var deck = pool.sort(function(){ return Math.random()-.5; }).slice(0, 6);
+
+  var i = 0, stars = 0, tries = 0, learned = [], errors = [];
+  var target = [], placed = [];
+
+  function speak(t){ try{ var u=new SpeechSynthesisUtterance(t); u.lang='en-US'; u.rate=.85;
+                          speechSynthesis.cancel(); speechSynthesis.speak(u);}catch(e){} }
+
+  function show(){
+    var w = deck[i];
+    if (!w) return end();
+    tries = 0;
+    target = w.ex.replace(/\s+/g,' ').trim().split(' ');
+    placed = [];
+    $('#sc').textContent = (i+1) + ' / ' + deck.length;
+    $('#hp').textContent = '⭐️ ' + stars;
+    $('#kk').textContent = 'Соберите предложение со словом «' + w.kk + '»';
+    $('#line').className = 'line'; $('#line').innerHTML = '';
+    var bank = $('#bank'); bank.innerHTML = '';
+    var order = target.map(function(t, n){ return { t:t, n:n }; }).sort(function(){ return Math.random()-.5; });
+    order.forEach(function(o){
+      var b = App.el('button','t', o.t);
+      b.onclick = function(){ b.classList.add('used'); placed.push({ t:o.t, el:b }); render(); };
+      bank.appendChild(b);
+    });
+  }
+
+  function render(){
+    var line = $('#line'); line.innerHTML = '';
+    placed.forEach(function(p, k){
+      var b = App.el('button','t small', p.t);
+      b.onclick = function(){ p.el.classList.remove('used'); placed.splice(k,1); render(); };
+      line.appendChild(b);
+    });
+  }
+
+  $('#undo').onclick = function(){
+    var p = placed.pop(); if (p) { p.el.classList.remove('used'); render(); }
+  };
+
+  $('#ck').onclick = function(){
+    var w = deck[i];
+    if (!w) return;                         /* партия уже закончилась */
+    if (placed.length !== target.length) return App.toast('Поставьте все слова');
+    var got = placed.map(function(p){ return p.t; }).join(' ');
+    var good = got === target.join(' ');
+    $('#line').className = 'line ' + (good ? 'ok' : 'no');
+    tries++;
+    if (good) {
+      stars += tries === 1 ? 2 : 1;
+      learned.push(w.en); App.seeWord(w.en, tries === 1);
+      speak(got);
+      i++; setTimeout(show, App.d(1100));
+    } else {
+      errors.push({ word:w.en, kk:w.kk, topic:'word order' });
+      App.seeWord(w.en, false);
+      App.toast('Порядок другой. В английском: кто → что делает → что');
+      setTimeout(function(){ $('#line').className = 'line'; }, App.d(900));
+    }
+  };
+
+  function end(){
+    $('#stage').innerHTML =
+      '<div class="end"><div style="font-size:44px">' + (stars >= 10 ? '🏆' : stars >= 6 ? '⭐️' : '💪') + '</div>' +
+      '<div style="font-size:40px;font-weight:900;margin:8px 0 2px">' + stars + '</div>' +
+      '<div style="opacity:.75">звёзд · предложений: ' + deck.length + '</div>' +
+      '<button class="btn2 main" id="ok" style="margin-top:20px;width:100%">Завершить</button></div>';
+    $('#ok').onclick = function(){ SL.close(); };
+    SL.finish({ game:'soilem', correct:deck.length, stars:Math.min(3, Math.round(stars/4)),
+                words:learned, errors:errors });
+  }
+
+  show();
+
+  if (App.qs('test') === '1') {
+    var guard = 0;
+    (function step(){
+      if ($('#ok') || guard++ > 40) {
+        console.assert(!!$('#ok'), 'игра не дошла до финала');
+        console.assert(document.body.scrollWidth <= window.innerWidth + 1, 'экран едет вбок');
+        console.log('OK games/soilem');
+        return;
+      }
+      /* собираем правильный порядок: ищем в банке слово, которое сейчас нужно */
+      var need = target[placed.length];
+      var btn = App.$$('#bank .t').filter(function(b){ return !b.classList.contains('used') && b.textContent === need; })[0];
+      if (btn) btn.click();
+      if (placed.length === target.length) $('#ck').click();
+      setTimeout(step, 30);
+    })();
+  }
+})();
+</script>
+</body>
+</html>

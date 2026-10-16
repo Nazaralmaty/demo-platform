@@ -1,0 +1,47 @@
+/* GSC Study · игры (корзины и порядок слов): океан-синее и пурпурное поля сайта, плитки мауве/золото/бледно-синие,
+   крупные заглавные слова, плоско и без теней, рисованная петля и цветок на фоне. */
+@font-face{font-family:'Montserrat';font-weight:100 900;font-display:swap;src:url('../assets/fonts/montserrat-cyrillic-ext.woff2') format('woff2');
+  unicode-range:U+0460-052F,U+1C80-1C88,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F}
+@font-face{font-family:'Montserrat';font-weight:100 900;font-display:swap;src:url('../assets/fonts/montserrat-cyrillic.woff2') format('woff2');
+  unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Montserrat';font-weight:100 900;font-display:swap;src:url('../assets/fonts/montserrat-latin.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+body{background:#135685}
+body:has(#bs){background:#135685}
+body:has(#bank){background:#B1005A}
+body .word,body .kk,body .b,body .t,body .btn2,body .big,body .combo,body .pill{font-family:'Montserrat','Golos Text',sans-serif}
+body .hud .pill{background:rgba(255,255,255,.16);border:1.5px solid rgba(255,255,255,.4);font-weight:700;border-radius:999px}
+body .word{font-weight:800;text-transform:uppercase;letter-spacing:-.04em;font-size:min(14vw,50px)}
+body .kk{opacity:.9;font-weight:600}
+body .combo{color:#EAC35D;font-weight:800}
+body .lives{filter:saturate(1.2)}
+
+/* корзины: плитки трёх цветов сайта, состояния — зелёный и пурпур */
+body .baskets{gap:10px}
+body .b{background:#F0EBEC;border:0;border-radius:30px;color:#135685;padding:20px 6px 18px;font-weight:800;font-size:13.5px;letter-spacing:-.01em;text-transform:uppercase}
+body .b:nth-child(2){background:#EAC35D;color:#0B3350}
+body .b:nth-child(3){background:#CEE5FF;color:#0B3350}
+body .b b{font-size:30px;margin-bottom:6px}
+body .b.ok{background:#37814C;color:#fff}
+body .b.no{background:#B1005A;color:#fff;outline:3px solid #F46899;outline-offset:-3px}
+body .btn2{background:transparent;border:1.5px solid rgba(255,255,255,.7);color:#fff;border-radius:12px;font-weight:700}
+body .btn2.main{background:#EAC35D;border-color:#EAC35D;color:#0B3350}
+body .end .big{font-weight:800;letter-spacing:-.04em}
+
+/* порядок слов: пурпурное поле, плитки-слова как белые бейджи */
+body .line{background:rgba(255,255,255,.12);border:2px dashed rgba(255,255,255,.7);border-radius:30px}
+body .line.ok{border-style:solid;border-color:#fff;background:#37814C}
+body .line.no{border-style:solid;border-color:#EAC35D;background:rgba(0,0,0,.28)}
+body .t{background:#fff;color:#135685;border-radius:12px;font-weight:700;box-shadow:none;border:0;padding:12px 15px}
+body .t:nth-child(3n+2){background:#EAC35D;color:#0B3350}
+body .t:nth-child(3n){background:#F0EBEC;color:#8A0045}
+body .t.small{box-shadow:none}
+body .t:active{transform:scale(.95);box-shadow:none}
+
+/* декор: восковые петли и цветок за игрой */
+body:has(.g)::before{content:'';position:fixed;right:-110px;bottom:70px;width:380px;height:272px;pointer-events:none;opacity:1;
+  background:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 420 300%22%3E%3Cdefs%3E%3Cfilter id=%22r%22 x=%22-10%25%22 y=%22-10%25%22 width=%22120%25%22 height=%22120%25%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%22.04%22 numOctaves=%222%22 seed=%223%22 result=%22n%22/%3E%3CfeDisplacementMap in=%22SourceGraphic%22 in2=%22n%22 scale=%226%22/%3E%3C/filter%3E%3C/defs%3E%3Cpath d=%22M377.6 198.2L372.0 207.5L365.1 216.4L357.1 224.9L348.0 232.9L337.8 240.3L326.7 247.0L314.7 253.0L302.0 258.2L288.7 262.6L274.8 266.1L260.6 268.8L246.2 270.6L231.6 271.5L217.1 271.5L202.7 270.7L188.6 269.0L174.8 266.6L161.5 263.4L148.7 259.5L136.4 255.0L124.9 249.8L114.0 244.2L103.8 238.0L94.4 231.4L85.8 224.4L78.0 217.0L71.0 209.4L64.8 201.4L59.4 193.2L54.9 184.7L51.2 176.1L48.5 167.3L46.6 158.4L45.6 149.4L45.6 140.4L46.6 131.3L48.5 122.3L51.5 113.3L55.5 104.4L60.5 95.8L66.6 87.4L73.7 79.3L81.8 71.6L90.8 64.3L100.8 57.6L111.7 51.5L123.4 46.0L135.8 41.3L148.8 37.3L162.3 34.1L176.2 31.8L190.3 30.4L204.5 29.8L218.8 30.1L232.9 31.4L246.8 33.4L260.3 36.4L273.2 40.1L285.6 44.5L297.3 49.7L308.2 55.5L318.3 61.8L327.5 68.7L335.8 76.0L343.2 83.6L349.5 91.6L354.9 99.8L359.4 108.3L362.8 116.8L365.3 125.4L366.9 134.1L367.6 142.8L367.4 151.5L366.3 160.1L364.4 168.6L361.6 177.0L358.0 185.3L353.5 193.4L348.2 201.2L342.1 208.8L335.2 216.1L327.4 223.1L318.9 229.7L309.7 235.9L299.7 241.6L289.0 246.8L277.6 251.4L265.7 255.4L253.3 258.8L240.4 261.4L227.1 263.2L213.7 264.3L200.1 264.5L186.5 263.9L172.9 262.5L159.7 260.2L146.7 257.1L134.2 253.3L122.4 248.6L111.2 243.3L100.8 237.3L91.3 230.7L82.7 223.6L75.1 216.0L68.6 208.0L63.2 199.7L58.8 191.2L55.6 182.5L53.5 173.7L52.4 165.0L52.4 156.2L53.3 147.5L55.3 139.0L58.1 130.7L61.9 122.6L66.4 114.8L71.8 107.2L77.8 100.0L84.6 93.1L92.0 86.5L100.1 80.3L108.8 74.6L118.0 69.2L127.7 64.3L138.0 59.8L148.7 55.9L159.9 52.4L171.5 49.5L183.4 47.2L195.6 45.5L208.0 44.4L220.6 44.0L233.3 44.4L245.9 45.4L258.5 47.1L270.8 49.6L282.9 52.8L294.5 56.8L305.6 61.4L316.1 66.7%22 fill=%22none%22 stroke=%22%23EAC35D%22 stroke-width=%2212%22 stroke-linecap=%22round%22 filter=%22url(%23r)%22/%3E%3C/svg%3E") center/contain no-repeat}
+body:has(.g)::after{content:'';position:fixed;right:16px;top:285px;width:38px;height:38px;pointer-events:none;opacity:.95;
+  background:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22 fill=%22%23F46899%22%3E%3Ccircle cx=%2281.0%22 cy=%2250.0%22 r=%2220%22/%3E%3Ccircle cx=%2271.9%22 cy=%2271.9%22 r=%2220%22/%3E%3Ccircle cx=%2250.0%22 cy=%2281.0%22 r=%2220%22/%3E%3Ccircle cx=%2228.1%22 cy=%2271.9%22 r=%2220%22/%3E%3Ccircle cx=%2219.0%22 cy=%2250.0%22 r=%2220%22/%3E%3Ccircle cx=%2228.1%22 cy=%2228.1%22 r=%2220%22/%3E%3Ccircle cx=%2250.0%22 cy=%2219.0%22 r=%2220%22/%3E%3Ccircle cx=%2271.9%22 cy=%2228.1%22 r=%2220%22/%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2235%22/%3E%3C/svg%3E") center/contain no-repeat}
+body .g{position:relative;z-index:1}

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>GSC Study · Сортировка слов</title>
+<script src="../app/games-theme.js"></script>
+<link rel="stylesheet" href="../assets/app.css">
+<style>
+  /* Своя арена, а не порт sort_arena: там учебный слой — эквивалентность
+     чисел внутри водной сортировки, и подменить его словами дороже, чем
+     собрать сортировщик под словарь. Механика: слово → нужная себет. */
+  body{background:linear-gradient(160deg,#0A3161,#061C3A);color:#fff;overflow:hidden}
+  .g{max-width:480px;margin:0 auto;height:100svh;display:flex;flex-direction:column;
+     padding:calc(10px + env(safe-area-inset-top)) 16px calc(14px + env(safe-area-inset-bottom))}
+  .hud{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .hud .pill{background:rgba(255,255,255,.14);color:#fff}
+  .lives{margin-left:auto;letter-spacing:2px}
+  .stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+  .word{font-size:min(15vw,52px);font-weight:900;letter-spacing:-1.5px;text-align:center;
+        transition:transform .18s var(--ease),opacity .18s}
+  .word.go{transform:translateY(26px) scale(.86);opacity:0}
+  .kk{font-size:17px;opacity:.62}
+  .baskets{display:flex;gap:9px}
+  .b{flex:1;background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.16);border-radius:18px;
+     padding:16px 6px;text-align:center;font-weight:800;font-size:14px;color:#fff;line-height:1.25;
+     transition:.14s var(--ease)}
+  .b:active{transform:scale(.96)}
+  .b b{display:block;font-size:26px;margin-bottom:4px}
+  .b.ok{background:#1E9E5A;border-color:#1E9E5A}
+  .b.no{background:#B31942;border-color:#B31942}
+  .combo{font-size:14px;font-weight:800;color:#E9A317;height:18px}
+  .end{text-align:center;padding:20px}
+  .end .big{font-size:44px}
+</style>
+<link rel="stylesheet" href="../app/games-theme.css">
+</head>
+<body>
+<div class="g">
+  <div class="hud">
+    <a class="pill" href="#" id="x">✕</a>
+    <div class="pill" id="sc">0 / 12</div>
+    <div class="lives" id="lv">❤️❤️❤️</div>
+  </div>
+  <div class="stage" id="stage">
+    <div class="combo" id="cm"></div>
+    <div class="word" id="w">…</div>
+    <div class="kk" id="kk"></div>
+  </div>
+  <div class="baskets" id="bs"></div>
+</div>
+<script src="../assets/app.js"></script>
+<script src="../app/course.js"></script>
+<script src="../app/words_bridge.js"></script>
+<script src="bridge.js"></script>
+<script>
+(function(){
+  var $ = App.$;
+  document.getElementById('x').href = window.SL_BACK;
+
+  var GROUPS = { act:'Действие', thing:'Предмет', sign:'Признак',
+                 time:'Время', word:'Служебное' };
+
+  var q = App.qs('u');
+  var pool = (q ? WORDS.filter(function(w){ return w.u === q; }) : WORDS).slice();
+  if (pool.length < 12) pool = WORDS.slice();
+  /* берём только те группы, которых в пуле хватает на осмысленный выбор */
+  var gs = {};
+  pool.forEach(function(w){ gs[w.g] = (gs[w.g]||0)+1; });
+  var keys = Object.keys(gs).filter(function(g){ return gs[g] >= 2; });
+  if (keys.length < 3) keys = Object.keys(gs);
+  pool = pool.filter(function(w){ return keys.indexOf(w.g) >= 0; });
+
+  var deck = pool.sort(function(){ return Math.random()-.5; }).slice(0, 12);
+  var i = 0, right = 0, lives = 3, combo = 0, best = 0, learned = [], errors = [];
+
+  function speak(t){ try{ var u=new SpeechSynthesisUtterance(t); u.lang='en-US'; u.rate=.9;
+                          speechSynthesis.cancel(); speechSynthesis.speak(u);}catch(e){} }
+
+  function drawBaskets(w){
+    /* три корзины: верная группа и две соседние — выбор осмысленный, а не «одна очевидная» */
+    var others = keys.filter(function(g){ return g !== w.g; }).sort(function(){ return Math.random()-.5; }).slice(0,2);
+    var set = others.concat([w.g]).sort(function(){ return Math.random()-.5; });
+    var bs = $('#bs'); bs.innerHTML = '';
+    set.forEach(function(g){
+      var b = App.el('button','b','<b>' + ({talk:'💬',people:'🧑',family:'👨‍👩‍👧',number:'🔢',school:'🎒',colour:'🎨'}[g]||'📦') + '</b>' + (GROUPS[g]||g));
+      b.onclick = function(){ pick(b, g === w.g, w); };
+      bs.appendChild(b);
+    });
+  }
+
+  function show(){
+    var w = deck[i];
+    if (!w || lives <= 0) return end();
+    $('#sc').textContent = right + ' / ' + deck.length;
+    $('#w').textContent = w.en; $('#w').className = 'word';
+    $('#kk').textContent = '';
+    $('#cm').textContent = combo >= 2 ? combo + ' подряд' : '';
+    drawBaskets(w);
+    speak(w.en);
+  }
+
+  function pick(btn, good, w){
+    App.$$('.b').forEach(function(b){ b.onclick = null; });
+    btn.classList.add(good ? 'ok' : 'no');
+    $('#kk').textContent = w.kk + ' · ' + (GROUPS[w.g] || w.g);
+    if (good) { right++; combo++; best = Math.max(best, combo); learned.push(w.en); }
+    else { lives--; combo = 0; errors.push({ word:w.en, kk:w.kk, topic:w.g });
+           $('#lv').textContent = '❤️'.repeat(Math.max(lives,0)) + '🖤'.repeat(3-Math.max(lives,0)); }
+    App.seeWord(w.en, good);
+    $('#w').classList.add('go');
+    i++;
+    setTimeout(show, App.d(good ? 520 : 1100));
+  }
+
+  function end(){
+    var stars = right >= 11 ? 3 : right >= 8 ? 2 : right >= 5 ? 1 : 0;
+    $('#bs').innerHTML = '';
+    $('#stage').innerHTML =
+      '<div class="end"><div style="font-size:44px">' + (stars ? '⭐️'.repeat(stars) : '💪') + '</div>' +
+      '<div class="big" style="margin:8px 0 2px">' + right + ' / ' + deck.length + '</div>' +
+      '<div style="opacity:.7">лучшая серия: ' + best + '</div></div>';
+    var b = App.el('button','b','Завершить'); b.style.maxWidth='240px'; b.style.margin='0 auto';
+    b.onclick = function(){ SL.close(); };
+    $('#bs').appendChild(b);
+    SL.finish({ game:'surypta', correct:right, mistakes:deck.length-right, stars:stars,
+                words:learned, errors:errors });
+  }
+
+  show();
+
+  if (App.qs('test') === '1') {
+    var guard = 0;
+    (function step(){
+      var bs = App.$$('.b').filter(function(b){ return !!b.onclick; });
+      if (bs.length && guard++ < 40 && !/Завершить/.test(bs[0].textContent)) {
+        /* тыкаем всегда в первую — часть будет неверной, игра обязана дожить до конца */
+        bs[0].click(); return setTimeout(step, 40);
+      }
+      setTimeout(function(){
+        console.assert(/\d+ \/ \d+/.test(App.$('.end .big') ? App.$('.end .big').textContent : ''), 'нет экрана результата');
+        console.assert(document.body.scrollWidth <= window.innerWidth + 1, 'экран едет вбок');
+        console.log('OK games/surypta');
+      }, 200);
+    })();
+  }
+})();
+</script>
+</body>
+</html>
